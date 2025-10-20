@@ -1,41 +1,70 @@
-import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
-import { createStackNavigator } from "@react-navigation/stack";
-import { View, Text } from "react-native";
+import { Stack, Redirect, useRouter } from "expo-router";
+import { createContext, useContext, useState, useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "../../global.css";
+import "~/components/ui/bottom-sheets";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { SheetProvider } from "react-native-actions-sheet";
 
-// Define the navigation stack's param list
-type RootStackParamList = {
-  Home: undefined;
+
+// Define the shape of the AuthContext
+interface AuthContextType {
+  loggedIn: boolean;
+  setLoggedIn: (value: boolean) => void;
+}
+
+// Create AuthContext with a default value
+const AuthContext = createContext<AuthContextType>({
+  loggedIn: false,
+  setLoggedIn: () => {},
+});
+
+// Custom hook to use AuthContext
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 };
 
-// Create the stack navigator
-const Stack = createStackNavigator<RootStackParamList>();
+export default function RootLayout() {
+  const [loggedIn, setLoggedIn] = useState(false);
+  const router = useRouter();
 
-// Sample Home Screen with Tailwind classes
-const HomeScreen: React.FC = () => (
-  <View className="flex-1 justify-center items-center bg-white">
-    <Text className="text-2xl font-bold text-blue-500">Welcome to MyApp!</Text>
-  </View>
-);
+  // Handle initial redirect based on login state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loggedIn) {
+        router.replace("/(tabs)/dashboard");
+      } else {
+        router.replace("/(onboarding)/welcome");
+      }
+    }, 0);
+    return () => clearTimeout(timer); // Cleanup
+  }, [loggedIn, router]);
 
-// Root layout component
-const RootLayout: React.FC = () => {
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home">
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ 
-            title: "Dashboard",
-            headerStyle: { backgroundColor: '#f8f9fa' },
-            headerTitleStyle: { fontWeight: 'bold', color: '#343a40' },            
-          
-          }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SheetProvider
+>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AuthContext.Provider value={{ loggedIn, setLoggedIn }}>
+          <SafeAreaView style={{ flex: 1 }}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen 
+               name="(tabs)"
+               options={{ 
+                headerShown: false, 
+                }} />
+              <Stack.Screen
+                name="(onboarding)"
+                options={{ headerShown: false }}
+              />
+            </Stack>
+          </SafeAreaView>
+        </AuthContext.Provider>
+      </GestureHandlerRootView>
+     </SheetProvider> 
   );
-};
-
-export default RootLayout;
+}
