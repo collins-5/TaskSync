@@ -1,100 +1,20 @@
-// ─────────────────────────────────────────────────────────────────────────────
-//  Team Details – Polished UI with dynamic data from Teams index.tsx
-// ─────────────────────────────────────────────────────────────────────────────
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-} from "react-native";
+import { View, Text, FlatList, TouchableOpacity, RefreshControl } from "react-native";
 import { useState, useCallback } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-} from "~/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Avatar } from "~/components/ui/avatar";
 import { Separator } from "~/components/ui/separator";
 import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
-
-// Mock data (shared with Teams and Tasks index.tsx)
-const mockTeams = [
-  {
-    id: "team1",
-    name: "Design Team",
-    members: 12,
-    color: "#6366f1",
-    initials: "DT",
-  },
-  {
-    id: "team2",
-    name: "Development Team",
-    members: 8,
-    color: "#10b981",
-    initials: "DT",
-  },
-  {
-    id: "team3",
-    name: "Marketing Crew",
-    members: 5,
-    color: "#f59e0b",
-    initials: "MC",
-  },
-  {
-    id: "team4",
-    name: "Support Squad",
-    members: 6,
-    color: "#ef4444",
-    initials: "SS",
-  },
-];
-
-const mockTasks = [
-  {
-    id: "task1",
-    title: "Design Homepage",
-    description: "Create wireframes for new homepage layout",
-    status: "Todo",
-    first_name: "Design",
-    last_name: "Task",
-    color: "#6366f1",
-    teamId: "team1",
-  },
-  {
-    id: "task2",
-    title: "API Integration",
-    description: "Connect backend to frontend for user auth",
-    status: "InProgress",
-    first_name: "API",
-    last_name: "Task",
-    color: "#10b981",
-    teamId: "team2",
-  },
-  {
-    id: "task3",
-    title: "Bug Fixes",
-    description: "Resolve issues in payment module",
-    status: "Done",
-    first_name: "Bug",
-    last_name: "Fix",
-    color: "#f59e0b",
-    teamId: "team1",
-  },
-];
+import { useData } from "~/hooks/useData";
 
 export default function TeamDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { tasks, teams } = useData();
   const [refreshing, setRefreshing] = useState(false);
 
-  // Find team by ID (replace with Supabase fetch later)
-  const team = mockTeams.find((t) => t.id === id) || {
+  const team = teams.find((t) => t.id === id) || {
     id: "unknown",
     name: "Team Not Found",
     members: 0,
@@ -102,17 +22,14 @@ export default function TeamDetails() {
     initials: "??",
   };
 
-  // Filter tasks by teamId
-  const teamTasks = mockTasks.filter((task) => task.teamId === id);
+  const teamTasks = tasks.filter((task) => task.teamId === id);
 
-  // Refresh handler (mock for now)
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1200);
   }, []);
 
-  // Render task card
-  const renderTask = ({ item }: { item: (typeof mockTasks)[0] }) => (
+  const renderTask = ({ item }: { item: typeof tasks[0] }) => (
     <Card
       className="mb-4 overflow-hidden bg-card rounded-xl"
       style={{
@@ -127,7 +44,7 @@ export default function TeamDetails() {
       <CardHeader className="pb-2">
         <View className="flex-row items-center space-x-3">
           <Avatar
-          resourceURL=""
+            resourceURL=""
             className="w-8 h-8 border-2 border-background"
             first_name={item.first_name}
             last_name={item.last_name}
@@ -137,11 +54,9 @@ export default function TeamDetails() {
             <CardTitle className="text-base">{item.title}</CardTitle>
             <Text
               className={`text-xs px-2 py-1 rounded-full mt-1 ${
-                item.status === "Todo"
-                  ? "bg-red-100 text-red-800"
-                  : item.status === "InProgress"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-green-100 text-green-800"
+                item.status === "Todo" ? "bg-red-100 text-red-800" :
+                item.status === "InProgress" ? "bg-yellow-100 text-yellow-800" :
+                "bg-green-100 text-green-800"
               }`}
             >
               {item.status}
@@ -170,37 +85,21 @@ export default function TeamDetails() {
   return (
     <>
       <View className="flex-1 bg-background">
-        {/* ── Header (matches Teams, Tasks, TaskCreation) ────────────────────── */}
-        <View className="flex-row pt-4 pb-3 bg-primary">
-          <View className="w-1/7 mr-4">
-            <Button
-              variant={"ghost"}
-              onPress={() => router.back()}
-              className="rounded-full"
-              iconProps={{
-                name: "arrow-left",
-                size: 24,
-                className: "text-white",
-              }}
-            />
-          </View>
-          <View className="w-2/3">
-            <Text className="text-3xl font-bold text-white tracking-tight">
-              {team.name}
-            </Text>
-            <Text className="text-primary-100 mt-1">Team Details</Text>
-          </View>
+        <View className="px-5 pt-4 pb-3 bg-primary">
+          <Text className="text-3xl font-bold text-white tracking-tight">
+            {team.name}
+          </Text>
+          <Text className="text-primary-100 mt-1">
+            Team Details
+          </Text>
         </View>
-
-        {/* ── Main content ───────────────────────────────────────────────────── */}
         <View className="flex-1 px-4 pt-4">
           <Card className="bg-card rounded-2xl shadow-lg overflow-hidden">
             <View className="h-2" style={{ backgroundColor: team.color }} />
-
             <CardHeader className="pb-2">
               <View className="flex-row items-center space-x-3">
                 <Avatar
-                  resourceURL=""
+                    resourceURL=""
                   className="w-10 h-10 border-2 border-background"
                   first_name={team.initials[0]}
                   last_name={team.initials[1]}
@@ -214,11 +113,8 @@ export default function TeamDetails() {
                 </View>
               </View>
             </CardHeader>
-
             <Separator className="mx-4 bg-muted/50" />
-
             <CardContent className="pt-4 space-y-4">
-              {/* Members */}
               <View>
                 <Text className="text-sm font-semibold text-foreground">
                   Members
@@ -227,8 +123,6 @@ export default function TeamDetails() {
                   {team.members} team members
                 </Text>
               </View>
-
-              {/* Tasks */}
               <View>
                 <Text className="text-sm font-semibold text-foreground mb-2">
                   Team Tasks
@@ -247,9 +141,7 @@ export default function TeamDetails() {
                 />
               </View>
             </CardContent>
-
             <Separator className="mx-4 bg-muted/50" />
-
             <CardFooter className="flex-row justify-between pt-4 pb-5 px-4 space-x-3">
               <Button
                 text="Back"

@@ -39,7 +39,7 @@ export default function KeyboardAvoidingWrapper({
     >
       <ScrollView
         contentContainerStyle={[
-          { flexGrow: 1, padding: 16 },
+          { flexGrow: 1 },
           contentContainerStyle,
         ]}
         scrollEnabled={scrollEnabled}

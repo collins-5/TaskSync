@@ -1,90 +1,22 @@
-// ─────────────────────────────────────────────────────────────────────────────
-//  Dashboard – Aligned with Tasks and Teams data
-// ─────────────────────────────────────────────────────────────────────────────
-import { FlatList, Animated, ScrollView, View as RNView  } from "react-native";
+import { FlatList, Animated, ScrollView, View as RNView } from "react-native";
 import { useRef } from "react";
 import { useRouter } from "expo-router";
-
 import View from "~/components/ui/view";
 import { Text } from "~/components/ui/text";
 import { Avatar } from "~/components/ui/avatar";
-import QuickAction from "~/components/Dashboard/quick-action";
-import TransactionCard from "~/components/Dashboard/transaction-card"; // Renamed to TaskCard in spirit
-import Header from "~/components/Dashboard/header";
 import { Card, CardHeader, CardTitle, CardFooter } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
-
-// Mock data (shared with tasks/index.tsx and teams/index.tsx)
-const mockTeams = [
-  {
-    id: "team1",
-    name: "Design Team",
-    members: 12,
-    color: "#6366f1",
-    initials: "DT",
-  },
-  {
-    id: "team2",
-    name: "Development Team",
-    members: 8,
-    color: "#10b981",
-    initials: "DT",
-  },
-  {
-    id: "team3",
-    name: "Marketing Crew",
-    members: 5,
-    color: "#f59e0b",
-    initials: "MC",
-  },
-  {
-    id: "team4",
-    name: "Support Squad",
-    members: 6,
-    color: "#ef4444",
-    initials: "SS",
-  },
-];
-
-const mockTasks = [
-  {
-    id: "task1",
-    title: "Design Homepage",
-    description: "Create wireframes for new homepage layout",
-    status: "Todo",
-    first_name: "Design",
-    last_name: "Task",
-    color: "#6366f1",
-    teamId: "team1",
-  },
-  {
-    id: "task2",
-    title: "API Integration",
-    description: "Connect backend to frontend for user auth",
-    status: "InProgress",
-    first_name: "API",
-    last_name: "Task",
-    color: "#10b981",
-    teamId: "team2",
-  },
-  {
-    id: "task3",
-    title: "Bug Fixes",
-    description: "Resolve issues in payment module",
-    status: "Done",
-    first_name: "Bug",
-    last_name: "Fix",
-    color: "#f59e0b",
-    teamId: "team1",
-  },
-];
+import QuickAction from "~/components/Dashboard/quick-action";
+import Header from "~/components/Dashboard/header";
+import { useData } from "~/hooks/useData";
+import TaskCard from "~/components/Dashboard/task-card";
 
 const quickActions = [
   {
     icon: "add-circle-outline" as const,
     label: "New Task",
     color: "#6366f1",
-    route: "/task/new",
+    route: "/tasks/new",
   },
   {
     icon: "people-outline" as const,
@@ -96,13 +28,36 @@ const quickActions = [
     icon: "list-outline" as const,
     label: "All Tasks",
     color: "#f59e0b",
-    route: "/task",
+    route: "/tasks",
+  },
+  {
+    icon: "chatbubble-outline" as const,
+    label: "AI Chat",
+    color: "#5E60CE",
+    route: "/ai-chat",
   },
 ];
 
 export default function Dashboard() {
   const router = useRouter();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const { tasks, teams, loading, error } = useData();
+
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-background">
+        <Text className="text-foreground">Loading...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 justify-center items-center bg-background">
+        <Text className="text-foreground">Error: {error}</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-background">
@@ -143,18 +98,15 @@ export default function Dashboard() {
             Recent Tasks
           </Text>
           <FlatList
-            data={mockTasks.slice(0, 5)} // Limit to 5 for dashboard
+            data={tasks.slice(0, 5)}
             renderItem={({ item }) => (
-              <TransactionCard
+              <TaskCard
                 title={item.title}
                 subtitle={item.status}
-                amount={
-                  mockTeams.find((t) => t.id === item.teamId)?.name ||
-                  item.teamId
-                }
+                amount={teams.find((t) => t.id === item.teamId)?.name || item.teamId}
                 icon="document-outline"
                 color={item.color}
-                onPress={() => router.push(`/task/${item.id}`)}
+                onPress={() => router.push(`/tasks/${item.id}`)}
               />
             )}
             keyExtractor={(item) => item.id}
@@ -169,7 +121,7 @@ export default function Dashboard() {
             Your Teams
           </Text>
           <FlatList
-            data={mockTeams.slice(0, 3)} // Limit to 3 for dashboard
+            data={teams.slice(0, 3)}
             renderItem={({ item }) => (
               <Card
                 className="mb-4 mx-4 rounded-2xl bg-card shadow-lg"
@@ -185,7 +137,7 @@ export default function Dashboard() {
                 <CardHeader className="pb-2">
                   <View className="flex-row items-center space-x-3">
                     <Avatar
-                    resourceURL=""
+                      resourceURL=""
                       className="w-10 h-10 border-2 border-background"
                       first_name={item.initials[0]}
                       last_name={item.initials[1]}
