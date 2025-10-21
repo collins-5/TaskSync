@@ -7,6 +7,7 @@ import {
   Keyboard,
   ViewStyle,
 } from "react-native";
+import { cn } from "~/lib/utils"; // Assuming you have a Tailwind helper like `cn`
 
 interface KeyboardAvoidingWrapperProps {
   children: React.ReactNode;
@@ -14,6 +15,9 @@ interface KeyboardAvoidingWrapperProps {
   showsVerticalScrollIndicator?: boolean;
   contentContainerStyle?: ViewStyle;
   keyboardVerticalOffset?: number;
+  behavior?: "padding" | "height" | "position"; // Add behavior
+  style?: ViewStyle; // Allow custom outer styles
+  className?: string; // Allow Tailwind classes
 }
 
 export default function KeyboardAvoidingWrapper({
@@ -21,16 +25,23 @@ export default function KeyboardAvoidingWrapper({
   scrollEnabled = true,
   showsVerticalScrollIndicator = false,
   contentContainerStyle,
-  keyboardVerticalOffset = 0,
+  keyboardVerticalOffset = Platform.OS === "ios" ? 0 : 20,
+  behavior = Platform.OS === "ios" ? "padding" : "height",
+  style,
+  className,
 }: KeyboardAvoidingWrapperProps) {
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[{ flex: 1 }, style]}
+      className={cn("bg-background", className)} // Default bg to match app
+      behavior={behavior}
       keyboardVerticalOffset={keyboardVerticalOffset}
     >
       <ScrollView
-        contentContainerStyle={[{ flexGrow: 1 }, contentContainerStyle]}
+        contentContainerStyle={[
+          { flexGrow: 1, padding: 16 },
+          contentContainerStyle,
+        ]}
         scrollEnabled={scrollEnabled}
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
         keyboardShouldPersistTaps="handled"

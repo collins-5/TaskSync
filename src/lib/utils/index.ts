@@ -72,6 +72,16 @@ export function withModifiedProps<T>(
   });
 }
 
+// src/lib/utils.ts
+export const getInitials = (firstName?: string, lastName?: string): string => {
+  if (!firstName && !lastName) return "?";
+
+  const first = firstName?.[0]?.toUpperCase() || "";
+  const last = lastName?.[0]?.toUpperCase() || "";
+
+  return `${first}${last}`.trim() || "?";
+};
+
 // export const getServiceImageMapKey = (serviceName: string) => {
 //   return serviceName.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-');
 // };
