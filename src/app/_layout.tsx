@@ -1,12 +1,12 @@
 import { Stack, useRouter } from "expo-router";
 import { createContext, useContext, useState, useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { StatusBar } from "react-native"; // Added for status bar
 import "../../global.css";
 import "~/components/ui/bottom-sheets";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SheetProvider } from "react-native-actions-sheet";
 
-// === 1. Define AuthContextType FIRST ===
 interface AuthContextType {
   loggedIn: boolean;
   hasProfile: boolean;
@@ -15,7 +15,6 @@ interface AuthContextType {
   checkAuthState: () => Promise<void>;
 }
 
-// === 2. Now create context ===
 const AuthContext = createContext<AuthContextType>({
   loggedIn: false,
   hasProfile: false,
@@ -32,16 +31,11 @@ export const useAuth = () => {
   return context;
 };
 
-// Mock async auth check
 const getAuthToken = async (): Promise<string | null> => {
-  // Replace with real auth check (AsyncStorage, SecureStore, etc.)
   return "mock-token"; // Simulate logged in
 };
 
 const checkUserProfile = async (userId: string): Promise<boolean> => {
-  // Replace with real API call
-  // const { data } = await supabase.from('profiles').select().eq('id', userId);
-  // return data?.length > 0;
   return false; // Simulate no profile
 };
 
@@ -51,7 +45,7 @@ export default function RootLayout() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const userId = "user123"; // Replace with real user ID from auth
+  const userId = "user123";
 
   const checkAuthState = async () => {
     try {
@@ -97,7 +91,7 @@ export default function RootLayout() {
   }, [loggedIn, hasProfile, loading, router]);
 
   if (loading) {
-    return null; // Or show splash screen
+    return null;
   }
 
   return (
@@ -113,12 +107,14 @@ export default function RootLayout() {
           }}
         >
           <SafeAreaView style={{ flex: 1 }}>
+            {/* Set StatusBar background to bg-primary (#6366f1) */}
+            <StatusBar
+              backgroundColor="green"
+              barStyle="light-content"
+            />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="(onboarding)"
-                options={{ headerShown: false }}
-              />
+              <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
             </Stack>
           </SafeAreaView>
         </AuthContext.Provider>

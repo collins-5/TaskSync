@@ -19,7 +19,7 @@
     }
 
     .bg-primary {
-        background-color: rgb(0, 255, 119);
+        background-color: green;
         /* As specified */
     }
     .bg-foreground {
@@ -33,7 +33,7 @@
      }
 
     .text-primary {
-        color: rgb(76, 220, 9);
+        color: green;
         /* White for all foregrounds */
     }
 

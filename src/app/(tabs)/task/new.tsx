@@ -45,7 +45,6 @@ export default function TaskCreation() {
     <>
       <KeyboardAvoidingWrapper
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="bg-background" // Ensure consistent bg
       >
         <View className="flex-1">
           {/* Header */}
@@ -119,6 +118,7 @@ export default function TaskCreation() {
                   }}
                   accessibilityLabel="Task title input"
                 />
+                <View className="my-8"/>
                 <Input
                   value={description}
                   onChangeText={setDescription}
@@ -154,7 +154,7 @@ export default function TaskCreation() {
                   text="Cancel"
                   variant="outline"
                   size="default"
-                  className="flex-1"
+                  className="flex-1 text-center"
                   onPress={() => router.back()}
                   accessibilityLabel="Cancel task creation"
                 />
@@ -162,7 +162,7 @@ export default function TaskCreation() {
                   text="Create"
                   variant="default"
                   size="default"
-                  className="flex-1 bg-primary"
+                  className="flex-1 text-center"
                   onPress={handleSubmit}
                   disabled={!title.trim()}
                   accessibilityLabel="Create task button"

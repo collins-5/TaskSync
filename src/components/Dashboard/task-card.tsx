@@ -13,14 +13,7 @@ interface Props {
   onPress?: () => void; // Add for navigation
 }
 
-export default function TransactionCard({
-  title,
-  subtitle,
-  amount,
-  icon,
-  color,
-  onPress,
-}: Props) {
+export default function TaskCard({ title, subtitle, amount, icon, color, onPress }: Props) {
   return (
     <TouchableOpacity onPress={onPress}>
       <Card className="mb-4 mx-4 rounded-2xl shadow-lg">

@@ -97,7 +97,7 @@ export default function Setup() {
                 text="Continue to Dashboard"
                 variant="default"
                 size="lg"
-                className="bg-primary rounded-lg"
+                className="rounded-lg"
                 onPress={handleSubmit}
                 disabled={!name.trim()}
               />
