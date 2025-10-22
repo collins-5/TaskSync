@@ -1,37 +1,48 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
-import { DropdownMenu } from "~/components/ui/drop-down-menu";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "~/components/ui/card";
 import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
-import { Separator } from "~/components/ui/separator";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "~/components/ui/card";
+import { useAuth } from "~/app/_layout";
 import { Image } from "expo-image";
-import { useAuth } from "../_layout";
+import supabase from "~/lib/utils/supabase";
 
 export default function Setup() {
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("Member");
-  const { setHasProfile } = useAuth();
   const router = useRouter();
+  const { user, setHasProfile, checkAuthState } = useAuth();
+  const [fullName, setFullName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = async () => {
-    // TODO: Save to Supabase
-    console.log("Profile setup:", { name, role });
-
-    // Simulate saving profile
-    // await supabase.from('profiles').insert({ id: userId, name, role });
-
-    setHasProfile(true);
-    router.replace("/(tabs)/dashboard");
+  const handleSaveProfile = async () => {
+    if (!user) {
+      setError("User not authenticated");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const [firstName, ...lastNameParts] = fullName.trim().split(" ");
+      const { error } = await supabase
+        .from("users")
+        .upsert({
+          id: user.id,
+          email: user.email,
+          first_name: firstName || "",
+          last_name: lastNameParts.join(" ") || "",
+        });
+      if (error) throw error;
+      setHasProfile(true);
+      await checkAuthState();
+      router.replace("/(tabs)/dashboard");
+    } catch (err) {
+      setError((err as Error).message || "Failed to save profile");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,33 +50,30 @@ export default function Setup() {
       <HeaderSafeAreaView />
       <KeyboardAvoidingWrapper>
         <View className="flex-1 bg-background justify-center px-6 py-4">
-          <Card className="bg-card rounded-2xl shadow-lg">
+          <Card className="bg-card rounded-2xl shadow-md">
             <CardHeader className="items-center pb-4">
-              {/* Logo */}
               <View className="items-center mb-6">
                 <Image
                   source={require("../../../assets/splash-logo.png")}
-                  className="w-24 h-24"
+                  className="w-32 h-32"
                   contentFit="contain"
                 />
               </View>
               <CardTitle className="text-3xl font-bold text-primary mb-2">
-                Complete Profile
+                Complete Your Profile
               </CardTitle>
-              <CardDescription className="text-center text-lg text-muted-foreground">
-                Help us personalize your experience
+              <CardDescription className="text-center text-xl text-muted-foreground">
+                Enter your name to get started
               </CardDescription>
             </CardHeader>
-
             <CardContent className="space-y-6">
-              {/* Name Input */}
-              <View>
+              <View className="mb-4">
                 <Input
-                  value={name}
-                  onChangeText={setName}
+                  value={fullName}
+                  onChangeText={setFullName}
+                  className="rounded-lg px-4 py-3 text-black"
                   placeholder="Full Name"
-                  className="rounded-lg px-4 py-3 text-foreground"
-                  placeholderTextColor="rgb(156, 163, 175)"
+                  placeholderTextColor="rgb(105, 105, 105)"
                   autoCapitalize="words"
                   iconProps={{
                     name: "account-outline",
@@ -74,44 +82,25 @@ export default function Setup() {
                   }}
                 />
               </View>
-
-              {/* Role Dropdown */}
-              <View>
-                <DropdownMenu
-                  items={[
-                    { label: "Admin", value: "Admin" },
-                    { label: "Manager", value: "Manager" },
-                    { label: "Member", value: "Member" },
-                  ]}
-                  selectedValue={role}
-                  onSelect={setRole}
-                  placeholder="Select Your Role"
-                  className="rounded-lg border border-input"
+              {error && (
+                <Text className="text-red-500 text-center">{error}</Text>
+              )}
+              {loading && (
+                <ActivityIndicator
+                  size="large"
+                  color="#6366f1"
+                  style={{ marginVertical: 20 }}
                 />
-              </View>
-
-              <Separator className="my-4 bg-muted" />
-
-              {/* Continue Button */}
+              )}
               <Button
-                text="Continue to Dashboard"
+                text="Save Profile"
                 variant="default"
                 size="lg"
-                className="rounded-lg"
-                onPress={handleSubmit}
-                disabled={!name.trim()}
+                className="bg-primary rounded-lg"
+                onPress={handleSaveProfile}
+                disabled={loading || !fullName.trim()}
+                accessibilityLabel="Save profile button"
               />
-
-              {/* Skip for now */}
-              <View className="flex-row justify-center mt-2">
-                <TouchableOpacity
-                  onPress={() => router.replace("/(tabs)/dashboard")}
-                >
-                  <Text className="text-muted-foreground text-sm">
-                    Skip for now
-                  </Text>
-                </TouchableOpacity>
-              </View>
             </CardContent>
           </Card>
         </View>

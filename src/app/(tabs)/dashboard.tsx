@@ -1,4 +1,4 @@
-import { FlatList, Animated, ScrollView, View as RNView } from "react-native";
+import { FlatList, Animated, ScrollView, View as RNView, ActivityIndicator } from "react-native";
 import { useRef } from "react";
 import { useRouter } from "expo-router";
 import View from "~/components/ui/view";
@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardFooter } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import QuickAction from "~/components/Dashboard/quick-action";
 import Header from "~/components/Dashboard/header";
-import { useData } from "~/hooks/useData";
+import { useSupabaseData } from "~/hooks/useSupabaseData";
 import TaskCard from "~/components/Dashboard/task-card";
 
 const quickActions = [
@@ -16,7 +16,7 @@ const quickActions = [
     icon: "add-circle-outline" as const,
     label: "New Task",
     color: "#6366f1",
-    route: "/tasks/new",
+    route: "/task/new",
   },
   {
     icon: "people-outline" as const,
@@ -28,7 +28,7 @@ const quickActions = [
     icon: "list-outline" as const,
     label: "All Tasks",
     color: "#f59e0b",
-    route: "/tasks",
+    route: "/task",
   },
   {
     icon: "chatbubble-outline" as const,
@@ -41,12 +41,13 @@ const quickActions = [
 export default function Dashboard() {
   const router = useRouter();
   const scrollY = useRef(new Animated.Value(0)).current;
-  const { tasks, teams, loading, error } = useData();
+  const { profile, teams, tasks, loading, error } = useSupabaseData();
 
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-foreground">Loading...</Text>
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text className="text-foreground mt-2">Loading...</Text>
       </View>
     );
   }
@@ -61,7 +62,10 @@ export default function Dashboard() {
 
   return (
     <View className="flex-1 bg-background">
-      <Header title="Dashboard" subtitle="Welcome back, John!" />
+      <Header
+        title="Dashboard"
+        subtitle={profile ? `Welcome back, ${profile.first_name}!` : "Welcome back!"}
+      />
 
       <Animated.ScrollView
         onScroll={Animated.event(
@@ -103,10 +107,10 @@ export default function Dashboard() {
               <TaskCard
                 title={item.title}
                 subtitle={item.status}
-                amount={teams.find((t) => t.id === item.teamId)?.name || item.teamId}
+                amount={teams.find((t) => t.id === item.team_id)?.name || item.team_id}
                 icon="document-outline"
                 color={item.color}
-                onPress={() => router.push(`/tasks/${item.id}`)}
+                onPress={() => router.push(`/task/${item.id}`)}
               />
             )}
             keyExtractor={(item) => item.id}

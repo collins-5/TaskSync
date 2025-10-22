@@ -3,6 +3,7 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Input } from "~/components/ui/input";
@@ -15,30 +16,110 @@ import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper
 import Markdown from "react-native-markdown-display";
 import { Text } from "~/components/ui/text";
 import { useAIAssistant } from "~/hooks/useAIAssistant";
+import { useSupabaseData } from "~/hooks/useSupabaseData";
+import { useAuth } from "~/app/_layout";
+import supabase from "~/lib/utils/supabase";
+import { useRef, useState } from "react";
+import Icon from "~/components/ui/icon";
 
 export default function AIChat() {
   const router = useRouter();
-  const { prompt, setPrompt, response, loading, generate } = useAIAssistant();
+  const { prompt, setPrompt, response, loading: aiLoading, generate } = useAIAssistant();
+  const { profile, teams, tasks, chatHistory, loading: dataLoading, error: dataError } = useSupabaseData();
+  const { user } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const sidebarAnim = useRef(new Animated.Value(-250)).current; // Sidebar width: 250px
 
-  const handleGenerate = () => {
+  const toggleSidebar = () => {
+    Animated.timing(sidebarAnim, {
+      toValue: isSidebarOpen ? -250 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const handleGenerate = async () => {
     generate();
-    // Clear input after submission
+    if (prompt.trim() && user) {
+      try {
+        await supabase.from("chat_history").insert({
+          user_id: user.id,
+          prompt,
+          response: response || "Awaiting response...",
+        });
+      } catch (err) {
+        console.error("Failed to save chat history:", err);
+      }
+    }
     setTimeout(() => setPrompt(""), 100);
   };
 
   return (
     <KeyboardAvoidingWrapper>
       <View className="flex-1 bg-gradient-to-b from-slate-50 to-white">
+        {/* Sidebar */}
+        <Animated.View
+          className="absolute top-0 left-0 bottom-0 w-[250px] bg-white shadow-lg border-r border-slate-200 z-10"
+          style={{ transform: [{ translateX: sidebarAnim }] }}
+        >
+          <View className="flex-1 pt-4 px-4">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-lg font-bold text-slate-800">Chat History</Text>
+              <TouchableOpacity
+                onPress={toggleSidebar}
+                className="p-2"
+                accessibilityLabel="Close sidebar"
+              >
+                <Icon name="close-circle" size={24} className="text-slate-600" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {chatHistory.length > 0 ? (
+                chatHistory.map((chat) => (
+                  <TouchableOpacity
+                    key={chat.id}
+                    className="bg-slate-50 p-3 rounded-lg mb-2 border border-slate-200"
+                    onPress={() => {
+                      setPrompt(chat.prompt);
+                      toggleSidebar();
+                    }}
+                  >
+                    <Text className="text-slate-700 font-semibold text-sm">
+                      {chat.prompt.length > 50 ? `${chat.prompt.slice(0, 50)}...` : chat.prompt}
+                    </Text>
+                    <Text className="text-slate-500 text-xs mt-1">
+                      {new Date(chat.created_at).toLocaleDateString()}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <Text className="text-slate-500 text-center">No chat history yet</Text>
+              )}
+            </ScrollView>
+          </View>
+        </Animated.View>
+
         {/* Modern Header */}
+        <HeaderSafeAreaView />
         <View className="px-6 bg-primary pt-6 pb-4">
           <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-4xl font-bold text-slate-900 tracking-tight">
-                AI Assistant
-              </Text>
-              <Text className="text-slate-500 mt-1 text-sm">
-                Powered by advanced AI
-              </Text>
+            <View className="flex-row items-center space-x-3">
+              <TouchableOpacity
+                onPress={toggleSidebar}
+                className="p-2"
+                accessibilityLabel="Open chat history"
+              >
+                <Icon name="menu" size={24} className="text-white" />
+              </TouchableOpacity>
+              <View>
+                <Text className="text-4xl font-bold text-slate-900 tracking-tight">
+                  AI Assistant
+                </Text>
+                <Text className="text-white mt-1 text-sm">
+                  {profile ? `Welcome, ${profile.first_name} ${profile.last_name}` : "Powered by advanced AI"}
+                </Text>
+              </View>
             </View>
             <View className="w-12 h-12 rounded-full bg-primary items-center justify-center shadow-lg">
               <Text className="text-white text-xl font-bold">✨</Text>
@@ -54,7 +135,7 @@ export default function AIChat() {
             contentContainerStyle={{ paddingBottom: 20 }}
           >
             {/* Welcome Message - Show when no response */}
-            {!response && !loading && (
+            {!response && !aiLoading && !dataLoading && (
               <View className="items-center justify-center py-12">
                 <View className="w-20 h-20 rounded-full bg-muted items-center justify-center mb-4">
                   <Text className="text-4xl">💬</Text>
@@ -71,9 +152,7 @@ export default function AIChat() {
                   <TouchableOpacity
                     className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"
                     onPress={() =>
-                      setPrompt(
-                        "Suggest creative task ideas for my design team"
-                      )
+                      setPrompt("Suggest creative task ideas for my design team")
                     }
                   >
                     <Text className="text-slate-700 text-sm">
@@ -82,9 +161,7 @@ export default function AIChat() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"
-                    onPress={() =>
-                      setPrompt("Help me write a project description")
-                    }
+                    onPress={() => setPrompt("Help me write a project description")}
                   >
                     <Text className="text-slate-700 text-sm">
                       📝 Help me write a project description
@@ -104,19 +181,22 @@ export default function AIChat() {
               </View>
             )}
 
+            {/* Data Error */}
+            {dataError && (
+              <Text className="text-red-500 text-center my-4">{dataError}</Text>
+            )}
+
             {/* User Message - Show when there's a prompt */}
-            {(response || loading) && prompt && (
+            {(response || aiLoading) && prompt && (
               <View className="flex-row justify-end mb-4 mt-4">
                 <View className="max-w-[80%] bg-primary rounded-3xl rounded-tr-md px-5 py-3 shadow-md">
-                  <Text className="text-white text-base leading-6">
-                    {prompt}
-                  </Text>
+                  <Text className="text-white text-base leading-6">{prompt}</Text>
                 </View>
               </View>
             )}
 
             {/* Loading State */}
-            {loading && (
+            {(aiLoading || dataLoading) && (
               <View className="flex-row items-start mb-4">
                 <Avatar
                   resourceURL=""
@@ -137,7 +217,7 @@ export default function AIChat() {
             )}
 
             {/* AI Response */}
-            {response && !loading && (
+            {response && !aiLoading && (
               <View className="flex-row items-start mb-4">
                 <Avatar
                   resourceURL=""
@@ -183,7 +263,7 @@ export default function AIChat() {
                         backgroundColor: "rgb(241,245,249)", // slate-100
                         padding: 4,
                         borderRadius: 4,
-                        color: "rgb(34,197,94)", // primary (green)
+                        color: "#22c55e", // primary (green)
                         fontFamily: "monospace",
                       },
                       code_block: {
@@ -200,6 +280,56 @@ export default function AIChat() {
                     {response}
                   </Markdown>
                 </View>
+              </View>
+            )}
+
+            {/* Teams Overview */}
+            {teams.length > 0 && (
+              <View className="mt-6">
+                <Text className="text-lg font-bold text-slate-800 mb-3">
+                  Your Teams
+                </Text>
+                {teams.slice(0, 3).map((team) => (
+                  <TouchableOpacity
+                    key={team.id}
+                    className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-2"
+                    onPress={() => router.push(`/teams/${team.id}`)}
+                  >
+                    <View className="flex-row items-center space-x-3">
+                      <View
+                        className="w-8 h-8 rounded-full"
+                        style={{ backgroundColor: team.color }}
+                      />
+                      <Text className="text-slate-700">
+                        {team.name} ({team.members} members)
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Recent Tasks */}
+            {tasks.length > 0 && (
+              <View className="mt-6">
+                <Text className="text-lg font-bold text-slate-800 mb-3">
+                  Recent Tasks
+                </Text>
+                {teams.slice(0, 3).map((task) => (
+                  <TouchableOpacity
+                    key={task.id}
+                    className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-2"
+                    onPress={() => router.push(`/task/${task.id}`)}
+                  >
+                    <Text className="text-slate-700 font-semibold" style={{ color: task.color }}>
+                      {task.title}
+                    </Text>
+                    <Text className="text-slate-500 text-sm">{task.status}</Text>
+                    <Text className="text-slate-500 text-sm">
+                      Team: {teams.find((t) => t.id === task.team_id)?.name || task.team_id}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
           </ScrollView>
@@ -226,14 +356,14 @@ export default function AIChat() {
               </View>
               <TouchableOpacity
                 onPress={handleGenerate}
-                disabled={loading || !prompt.trim()}
+                disabled={aiLoading || dataLoading || !prompt.trim()}
                 className={`w-12 h-12 rounded-full items-center justify-center shadow-lg ${
-                  loading || !prompt.trim() ? "bg-slate-300" : "bg-primary"
+                  aiLoading || dataLoading || !prompt.trim() ? "bg-slate-300" : "bg-primary"
                 }`}
                 accessibilityLabel="Send message"
               >
                 <Text className="text-white text-xl">
-                  {loading ? "⏳" : "➤"}
+                  {aiLoading || dataLoading ? "⏳" : "➤"}
                 </Text>
               </TouchableOpacity>
             </View>

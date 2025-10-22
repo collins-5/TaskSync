@@ -1,6 +1,13 @@
-import { FlatList, View, Text, RefreshControl } from "react-native";
+import {
+  FlatList,
+  View,
+  Text,
+  RefreshControl,
+  ActivityIndicator,
+} from "react-native";
 import { useState, useCallback } from "react";
 import { useRouter } from "expo-router";
+
 import {
   Card,
   CardHeader,
@@ -11,11 +18,12 @@ import {
 import { Button } from "~/components/ui/button";
 import { Avatar } from "~/components/ui/avatar";
 import { Separator } from "~/components/ui/separator";
-import { useData } from "~/hooks/useData";
+import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
+import { useSupabaseData } from "~/hooks/useSupabaseData";
 
 export default function Tasks() {
   const router = useRouter();
-  const { tasks, teams, loading, error } = useData();
+  const { tasks, teams, loading, error } = useSupabaseData();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(() => {
@@ -26,7 +34,8 @@ export default function Tasks() {
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-foreground">Loading...</Text>
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text className="text-foreground mt-2">Loading tasks…</Text>
       </View>
     );
   }
@@ -39,7 +48,7 @@ export default function Tasks() {
     );
   }
 
-  const renderTask = ({ item }: { item: typeof tasks[0] }) => (
+  const renderTask = ({ item }: { item: (typeof tasks)[0] }) => (
     <Card
       className="mb-4 overflow-hidden bg-card rounded-2xl"
       style={{
@@ -54,7 +63,7 @@ export default function Tasks() {
       <CardHeader className="pb-2">
         <View className="flex-row items-center space-x-3">
           <Avatar
-            resourceURL=""
+          resourceURL=""
             className="w-10 h-10 border-2 border-background"
             first_name={item.first_name}
             last_name={item.last_name}
@@ -67,8 +76,8 @@ export default function Tasks() {
                 item.status === "Todo"
                   ? "bg-red-100 text-red-800"
                   : item.status === "InProgress"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-green-100 text-green-800"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "bg-green-100 text-green-800"
               }`}
             >
               {item.status}
@@ -76,12 +85,15 @@ export default function Tasks() {
           </View>
         </View>
       </CardHeader>
+
       <Separator className="mx-4 bg-muted/50" />
+
       <CardContent className="pt-2">
         <Text className="text-sm text-muted-foreground line-clamp-2">
           {item.description || "No description"}
         </Text>
       </CardContent>
+
       <CardFooter className="pt-2 pb-4">
         <Button
           text="View Task"
@@ -97,14 +109,15 @@ export default function Tasks() {
 
   return (
     <View className="flex-1 bg-background">
+      {/* Header */}
+      {/* <HeaderSafeAreaView /> */}
       <View className="px-5 pt-4 pb-3 bg-primary">
         <Text className="text-3xl font-bold text-white tracking-tight">
           Tasks
         </Text>
-        <Text className="text-primary-100 mt-1">
-          Your project tasks
-        </Text>
+        <Text className="text-primary-100 mt-1">Your project tasks</Text>
       </View>
+
       <FlatList
         data={tasks}
         renderItem={renderTask}
@@ -127,12 +140,15 @@ export default function Tasks() {
           </View>
         }
       />
+
+      {/* FAB */}
       <Button
         variant="default"
         size="lg"
-        className="absolute bottom-4 right-5 rounded-full items-center justify-center"
-        iconProps={{ name: "plus-box-outline", size: 24, className: "text-white " }}
+        className="absolute bottom-4 right-5 rounded-full shadow-lg"
+        iconProps={{ name: "plus", size: 28, className: "text-white" }}
         onPress={() => router.push("/task/new")}
+        accessibilityLabel="Create new task"
       />
     </View>
   );

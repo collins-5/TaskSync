@@ -36,7 +36,7 @@ export const useAIAssistant = () => {
             ],
             generationConfig: {
               temperature: 0.7,
-              maxOutputTokens: 512,
+              maxOutputTokens: 1000,
             },
             safetySettings: [
               {

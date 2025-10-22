@@ -1,15 +1,22 @@
-import { FlatList, View, Text, RefreshControl } from "react-native";
+import {
+  FlatList,
+  View,
+  Text,
+  RefreshControl,
+  ActivityIndicator,
+} from "react-native";
 import { useState, useCallback } from "react";
 import { useRouter } from "expo-router";
 import { Card, CardHeader, CardTitle, CardFooter } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Avatar } from "~/components/ui/avatar";
 import { Separator } from "~/components/ui/separator";
-import { useData } from "~/hooks/useData";
+import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
+import { useSupabaseData } from "~/hooks/useSupabaseData";
 
 export default function Teams() {
   const router = useRouter();
-  const { teams, loading, error } = useData();
+  const { teams, loading, error } = useSupabaseData();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(() => {
@@ -20,7 +27,8 @@ export default function Teams() {
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-foreground">Loading...</Text>
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text className="text-foreground mt-2">Loading teams...</Text>
       </View>
     );
   }
@@ -33,7 +41,7 @@ export default function Teams() {
     );
   }
 
-  const renderTeam = ({ item }: { item: typeof teams[0] }) => (
+  const renderTeam = ({ item }: { item: (typeof teams)[0] }) => (
     <Card
       className="mb-4 overflow-hidden bg-card rounded-2xl"
       style={{
@@ -48,7 +56,7 @@ export default function Teams() {
       <CardHeader className="pb-2">
         <View className="flex-row items-center space-x-3">
           <Avatar
-            resourceURL=""
+          resourceURL=""
             className="w-12 h-12 border-2 border-background"
             first_name={item.initials[0]}
             last_name={item.initials[1]}
@@ -78,6 +86,7 @@ export default function Teams() {
 
   return (
     <View className="flex-1 bg-background">
+      <HeaderSafeAreaView />
       <View className="px-5 pt-4 pb-3 bg-primary">
         <Text className="text-3xl font-bold text-white tracking-tight">
           Teams
@@ -107,6 +116,14 @@ export default function Teams() {
             </Text>
           </View>
         }
+      />
+      <Button
+        variant="default"
+        size="lg"
+        className="absolute bottom-4 right-4 rounded-full items-center justify-center shadow-lg"
+        iconProps={{ name: "plus", size: 28, className: "text-white" }}
+        onPress={() => router.push("/teams/new")}
+        accessibilityLabel="Create new team"
       />
     </View>
   );

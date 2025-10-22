@@ -1,7 +1,6 @@
 import { View, Text, Platform, ActivityIndicator } from "react-native";
-import { useState, useEffect } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
-
+import { useState } from "react";
+import { useRouter } from "expo-router";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { Avatar } from "~/components/ui/avatar";
@@ -13,67 +12,46 @@ import {
   CardContent,
   CardFooter,
 } from "~/components/ui/card";
-import { DropdownMenu } from "~/components/ui/drop-down-menu";
 import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
-import { useSupabaseData } from "~/hooks/useSupabaseData";
 import { useAuth } from "~/app/_layout";
 import supabase from "~/lib/utils/supabase";
 import { ScrollView } from "react-native-actions-sheet";
 
-export default function TaskCreation() {
+export default function TeamCreation() {
   const router = useRouter();
-  const { edit } = useLocalSearchParams<{ edit?: string }>();
-  const { tasks, teams } = useSupabaseData();
   const { user } = useAuth();
 
-  const isEdit = !!edit;
-  const taskToEdit = isEdit ? tasks.find((t) => t.id === edit) : null;
-
-  const [title, setTitle] = useState(taskToEdit?.title ?? "");
-  const [description, setDescription] = useState(taskToEdit?.description ?? "");
-  const [status, setStatus] = useState<"Todo" | "InProgress" | "Done">(
-    taskToEdit?.status ?? "Todo"
-  );
-  const [teamId, setTeamId] = useState(
-    taskToEdit?.team_id ?? teams[0]?.id ?? ""
-  );
+  const [name, setName] = useState("");
+  const [members, setMembers] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Populate team dropdown
-  const teamOptions = teams.map((t) => ({
-    label: t.name,
-    value: t.id,
-  }));
-
   const handleSubmit = async () => {
-    if (!title.trim() || !user) return;
+    if (!name.trim() || !members.trim() || !user) return;
     setLoading(true);
     setError("");
 
     try {
+      const initials = name
+        .split(" ")
+        .slice(0, 2)
+        .map((word) => word[0]?.toUpperCase() || "")
+        .join("");
       const payload = {
-        id: isEdit ? edit : `task-${user.id}-${Date.now()}`,
-        title,
-        description,
-        status,
-        first_name: user.user_metadata?.first_name ?? "User",
-        last_name: user.user_metadata?.last_name ?? "",
+        id: `team-${user.id}-${Date.now()}`,
+        name,
+        members: parseInt(members, 10),
         color: "#6366f1", // default primary
-        team_id: teamId,
-        user_id: user.id,
+        initials,
       };
 
-      const { error } = await supabase
-        .from("tasks")
-        .upsert(payload, { onConflict: "id" });
-
+      const { error } = await supabase.from("teams").insert(payload);
       if (error) throw error;
 
-      router.replace("/(tabs)/task");
+      router.replace("/(tabs)/teams");
     } catch (err) {
-      setError((err as Error).message || "Failed to save task");
+      setError((err as Error).message || "Failed to create team");
     } finally {
       setLoading(false);
     }
@@ -86,7 +64,6 @@ export default function TaskCreation() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View className="flex-1 bg-background">
-          {/* Header */}
           <View className="flex-row items-center pt-4 pb-3 bg-primary px-4">
             <Button
               variant="ghost"
@@ -100,17 +77,14 @@ export default function TaskCreation() {
             />
             <View className="flex-1 ml-3">
               <Text className="text-3xl font-bold text-white tracking-tight">
-                {isEdit ? "Edit Task" : "New Task"}
+                New Team
               </Text>
               <Text className="text-primary-100 mt-1">
-                {isEdit
-                  ? "Update task details"
-                  : "Add a task to keep your project on track"}
+                Create a team to collaborate on projects
               </Text>
             </View>
           </View>
 
-          {/* Form */}
           <ScrollView
             className="flex-1"
             contentContainerStyle={{ padding: 16, paddingTop: 8 }}
@@ -126,70 +100,42 @@ export default function TaskCreation() {
                     last_name="S"
                     alt="TaskSync"
                   />
-                  <CardTitle className="text-lg">Task Details</CardTitle>
+                  <CardTitle className="text-lg">Team Details</CardTitle>
                 </View>
               </CardHeader>
-
               <Separator className="mx-4 bg-muted/50" />
-
               <CardContent className="space-y-5 pt-4">
                 <Input
-                  value={title}
-                  onChangeText={setTitle}
-                  placeholder="Task Title"
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Team Name"
                   className="rounded-lg px-4 py-3 text-foreground"
                   placeholderTextColor="rgb(156,163,175)"
-                  autoCapitalize="sentences"
+                  autoCapitalize="words"
                   iconProps={{
-                    name: "folder-plus-outline",
+                    name: "pulse",
                     size: 20,
                     className: "text-muted-foreground",
                   }}
                 />
-
                 <Input
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="Task Description (optional)"
+                  value={members}
+                  onChangeText={setMembers}
+                  placeholder="Number of Members"
                   className="rounded-lg px-4 py-3 text-foreground"
                   placeholderTextColor="rgb(156,163,175)"
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
+                  keyboardType="numeric"
                   iconProps={{
-                    name: "file-outline",
+                    name: "pulse",
                     size: 20,
                     className: "text-muted-foreground",
                   }}
-                />
-
-                <DropdownMenu
-                  items={[
-                    { label: "Todo", value: "Todo" },
-                    { label: "In Progress", value: "InProgress" },
-                    { label: "Done", value: "Done" },
-                  ]}
-                  selectedValue={status}
-                  onSelect={(v) => setStatus(v as typeof status)}
-                  placeholder="Select Status"
-                  className="rounded-lg border border-input"
-                />
-
-                <DropdownMenu
-                  items={teamOptions}
-                  selectedValue={teamId}
-                  onSelect={setTeamId}
-                  placeholder="Select Team"
-                  className="rounded-lg border border-input"
                 />
               </CardContent>
-
               {error && (
                 <Text className="text-red-500 text-center px-4">{error}</Text>
               )}
-
               <Separator className="mx-4 bg-muted/50" />
-
               <CardFooter className="flex-row justify-between pt-4 pb-5 px-4 space-x-3">
                 <Button
                   text="Cancel"
@@ -199,15 +145,14 @@ export default function TaskCreation() {
                   onPress={() => router.back()}
                 />
                 <Button
-                  text={isEdit ? "Update" : "Create"}
+                  text="Create"
                   variant="default"
                   size="default"
                   className="flex-1 bg-primary"
                   onPress={handleSubmit}
-                  disabled={loading || !title.trim()}
+                  disabled={loading || !name.trim() || !members.trim()}
                 />
               </CardFooter>
-
               {loading && (
                 <ActivityIndicator
                   size="large"
