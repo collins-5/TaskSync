@@ -1,71 +1,32 @@
-// src/components/Header.tsx
-import React from "react";
-import { Platform, StyleSheet } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Text } from "../ui/text";
-import View from "../ui/view";
+import { View, Text } from "react-native";
+import { Image } from "expo-image";
 
-export const HEADER_HEIGHT = 50; // 108px total content height
+interface HeaderProps {
+  title: string;
+  subtitle: string;
+  image?: string | null;
+}
 
-export default function Header({
-  title = "Dashboard",
-  subtitle = "Welcome back, John!",
-  showBack = false,
-}: {
-  title?: string;
-  subtitle?: string;
-  showBack?: boolean;
-}) {
-  const insets = useSafeAreaInsets();
-
+export default function Header({ title, subtitle, image }: HeaderProps) {
   return (
-    <View
-      className="bg-primary"
-      style={{
-        paddingTop: insets.top,
-        height: HEADER_HEIGHT + insets.top,
-        ...styles.shadow, // subtle shadow for depth
-      }}
-    >
-      {/* Optional: Darker overlay for depth (pure RN, no gradient) */}
-      <View
-        className="absolute inset-0 bg-black opacity-10"
-        style={{ borderRadius: 0 }}
-      />
-
-      <View className="flex-1 justify-end px-5 pb-3">
-        {/* Back Button (optional) */}
-        {showBack && (
-          <View className="absolute left-9 top-12">
-            <Text className="text-black text-3xl font-bold">←</Text>
-          </View>
-        )}
-
-        
-        <Text className="text-3xl font-bold text-white tracking-tight"
-        >
+    <View className="bg-primary p-4 flex-row items-center">
+      {image ? (
+        <Image
+          source={{ uri: image }}
+          className="w-12 h-12 rounded-full mr-4"
+          contentFit="cover"
+        />
+      ) : (
+        <View className="w-12 h-12 rounded-full bg-muted mr-4 flex items-center justify-center">
+          <Text className="text-foreground">?</Text>
+        </View>
+      )}
+      <View>
+        <Text className="text-2xl font-bold text-primary-foreground">
           {title}
         </Text>
-
-        {/* Subtitle */}
-        <Text
-          className="text-primary-100 text-base mt-0.5 opacity-90"
-          style={{ fontWeight: "500" }}
-        >
-          {subtitle}
-        </Text>
+        <Text className="text-lg text-primary-foreground">{subtitle}</Text>
       </View>
     </View>
   );
 }
-
-// Subtle shadow to lift the header
-const styles = StyleSheet.create({
-  shadow: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-});

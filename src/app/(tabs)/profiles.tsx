@@ -10,14 +10,46 @@ import { Image } from "expo-image";
 import { Skeleton } from "~/components/ui/skeleton";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
 
-export default function Setup() {
+export default function Profiles() {
   const { user, checkAuthState } = useSessionInit();
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [image, setImage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Fetch profile data
+  useEffect(() => {
+    if (!user) return;
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from("users")
+          .select("first_name, last_name, image")
+          .eq("id", user.id)
+          .single();
+        if (
+          error &&
+          !error.message.includes("column users.image does not exist")
+        ) {
+          throw error;
+        }
+        setFirstName(data?.first_name || "");
+        setLastName(data?.last_name || "");
+        setImage(data?.image || null);
+        if (data?.image) console.log("Profile image URL:", data.image);
+      } catch (err) {
+        setError((err as Error).message || "Failed to load profile");
+        console.error("Profile fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [user]);
 
   // Handle image upload
   const pickImage = async () => {
@@ -35,17 +67,27 @@ export default function Setup() {
     });
 
     if (!result.canceled && result.assets[0].uri) {
-      setLoading(true);
+      setSaving(true);
       try {
         const file = result.assets[0];
-        const fileExt = file.uri.split(".").pop();
+        const fileExt = file.uri.split(".").pop() || "jpg";
         const fileName = `${user!.id}-${Date.now()}.${fileExt}`;
-        const response = await fetch(file.uri);
-        const blob = await response.blob();
 
+        // Upload file directly using uri
         const { error: uploadError } = await supabase.storage
           .from("profile-images")
-          .upload(fileName, blob, { contentType: file.mimeType });
+          .upload(
+            fileName,
+            {
+              uri: file.uri,
+              type: file.mimeType || `image/${fileExt}`,
+              name: fileName,
+            },
+            {
+              contentType: file.mimeType || `image/${fileExt}`,
+              upsert: true,
+            }
+          );
 
         if (uploadError) throw uploadError;
 
@@ -53,48 +95,58 @@ export default function Setup() {
           .from("profile-images")
           .getPublicUrl(fileName);
 
-        setImage(publicUrlData.publicUrl);
+        const imageUrl = publicUrlData.publicUrl;
+        console.log("Uploaded image URL:", imageUrl);
+        // Test URL accessibility
+        fetch(imageUrl)
+          .then((res) => console.log("Image URL fetch status:", res.status))
+          .catch((err) => console.error("Image URL fetch error:", err));
+        setImage(imageUrl);
+
+        // Update user table with image URL
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({ image: imageUrl })
+          .eq("id", user!.id);
+
+        if (updateError) throw updateError;
       } catch (err) {
         setError((err as Error).message || "Failed to upload image");
+        console.error("Image upload error:", err);
       } finally {
-        setLoading(false);
+        setSaving(false);
       }
     }
   };
 
   // Handle profile save
   const handleSave = async () => {
-    setLoading(true);
+    setSaving(true);
     setError("");
     try {
-      const updates: {
-        first_name: string;
-        last_name: string;
-        image?: string | null;
-      } = {
-        first_name: firstName,
-        last_name: lastName,
-      };
-      if (image) updates.image = image;
-
       const { error } = await supabase
         .from("users")
-        .upsert({ id: user!.id, ...updates });
-      if (
-        error &&
-        !error.message.includes("column users.image does not exist")
-      ) {
-        throw error;
-      }
+        .update({ first_name: firstName, last_name: lastName })
+        .eq("id", user!.id);
+      if (error) throw error;
       await checkAuthState();
-      Alert.alert("Success", "Profile setup complete");
       router.replace("/(tabs)/dashboard");
     } catch (err) {
       setError((err as Error).message || "Failed to save profile");
+      console.error("Profile save error:", err);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
+
+  console.log("Rendering Profiles:", {
+    firstName,
+    lastName,
+    image,
+    loading,
+    saving,
+    error,
+  });
 
   if (loading) {
     return (
@@ -112,16 +164,18 @@ export default function Setup() {
       <View className="flex-1 bg-background justify-center px-6">
         <View className="bg-card rounded-2xl shadow-md p-6">
           <Text className="text-2xl font-bold text-foreground mb-4 text-center">
-            Complete Your Profile
+            Your Profile
           </Text>
           <TouchableOpacity
             onPress={pickImage}
-            disabled={loading}
+            disabled={saving}
             className="items-center mb-6"
           >
             {image ? (
               <Image
-                source={{ uri: image }}
+                source={{
+                  uri: image,
+                }}
                 className="w-32 h-32 rounded-full"
                 contentFit="cover"
               />
@@ -153,8 +207,15 @@ export default function Setup() {
             variant="default"
             size="lg"
             onPress={handleSave}
-            disabled={loading || !firstName.trim()}
-            loading={loading}
+            disabled={saving || !firstName.trim()}
+            loading={saving}
+          />
+          <Button
+            text="Back"
+            variant="outline"
+            size="lg"
+            className="mt-4"
+            onPress={() => router.back()}
           />
         </View>
       </View>

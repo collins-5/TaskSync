@@ -12,14 +12,16 @@ export const useAIAssistant = () => {
   const generate = async () => {
     if (!prompt.trim()) return;
     if (!API_KEY) {
-      setResponse("Error: API key is missing. Please configure GEMINI_API_KEY in .env.");
+      setResponse(
+        "Error: API key is missing. Please configure GEMINI_API_KEY in .env."
+      );
       return;
     }
 
     setLoading(true);
     setResponse("");
 
-    try {
+    https: try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
         {
@@ -36,7 +38,7 @@ export const useAIAssistant = () => {
             ],
             generationConfig: {
               temperature: 0.7,
-              maxOutputTokens: 512,
+              maxOutputTokens: 1000,
             },
             safetySettings: [
               {
@@ -68,11 +70,17 @@ export const useAIAssistant = () => {
             `Bad request: ${errorData.error?.message || "Invalid request format. Check prompt or API configuration."}`
           );
         } else if (res.status === 401) {
-          throw new Error("Invalid API key. Please verify your key in Google AI Studio.");
+          throw new Error(
+            "Invalid API key. Please verify your key in Google AI Studio."
+          );
         } else if (res.status === 404) {
-          throw new Error("Model not found. Try 'gemini-flash-latest' or check available models.");
+          throw new Error(
+            "Model not found. Try 'gemini-flash-latest' or check available models."
+          );
         } else if (res.status === 429) {
-          throw new Error("Rate limit exceeded. Try again later or check your quota.");
+          throw new Error(
+            "Rate limit exceeded. Try again later or check your quota."
+          );
         } else {
           throw new Error(`API error: ${res.status} ${res.statusText}`);
         }
@@ -87,7 +95,10 @@ export const useAIAssistant = () => {
       setResponse(generatedText);
     } catch (error) {
       console.error("Gemini API error:", error);
-      setResponse((error as Error).message || "Sorry, an error occurred. Please try again later.");
+      setResponse(
+        (error as Error).message ||
+          "Sorry, an error occurred. Please try again later."
+      );
     } finally {
       setLoading(false);
     }

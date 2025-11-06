@@ -1,3 +1,4 @@
+// src/app/(tabs)/teams/new.tsx
 import {
   View,
   Text,
@@ -6,7 +7,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useState, useEffect } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
@@ -19,52 +20,30 @@ import {
   CardContent,
   CardFooter,
 } from "~/components/ui/card";
-import { DropdownMenu } from "~/components/ui/drop-down-menu";
+
 import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
-import { useSupabaseData } from "~/hooks/useSupabaseData";
-import { useSessionInit } from "~/components/core/SessionInitializer"; // Correct import
+
+import { useSessionInit } from "~/components/core/SessionInitializer"; // Correct hook
 import supabase from "~/lib/utils/supabase";
 
-export default function TaskCreation() {
+export default function TeamCreation() {
   const router = useRouter();
-  const { edit } = useLocalSearchParams<{ edit?: string }>();
-  const { tasks, teams } = useSupabaseData();
-  const { user } = useSessionInit(); // Now correct
+  const { user } = useSessionInit(); // <-- your own session hook
 
-  const isEdit = !!edit;
-  const taskToEdit = isEdit ? tasks.find((t) => t.id === edit) : null;
-
-  const [title, setTitle] = useState(taskToEdit?.title ?? "");
-  const [description, setDescription] = useState(taskToEdit?.description ?? "");
-  const [status, setStatus] = useState<"Todo" | "InProgress" | "Done">(
-    taskToEdit?.status ?? "Todo"
-  );
-  const [teamId, setTeamId] = useState(
-    taskToEdit?.team_id ?? teams[0]?.id ?? ""
-  );
+  const [name, setName] = useState("");
+  const [members, setMembers] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Populate team dropdown
-  const teamOptions = teams.map((t) => ({
-    label: t.name,
-    value: t.id,
-  }));
-
-  // Sync form with taskToEdit when editing
+  // Clear error when the user starts typing
   useEffect(() => {
-    if (isEdit && taskToEdit) {
-      setTitle(taskToEdit.title ?? "");
-      setDescription(taskToEdit.description ?? "");
-      setStatus((taskToEdit.status as typeof status) ?? "Todo");
-      setTeamId(taskToEdit.team_id ?? teams[0]?.id ?? "");
-    }
-  }, [isEdit, taskToEdit, teams]);
+    if (name || members) setError("");
+  }, [name, members]);
 
   const handleSubmit = async () => {
-    if (!title.trim() || !user) {
-      setError("Title and user are required");
+    if (!name.trim() || !members.trim() || !user) {
+      setError("Please fill in both fields");
       return;
     }
 
@@ -72,27 +51,29 @@ export default function TaskCreation() {
     setError("");
 
     try {
+      // ---- Generate safe initials -------------------------------------------------
+      const words = name.trim().split(/\s+/);
+      const initials = words
+        .slice(0, 2)
+        .map((w) => w[0]?.toUpperCase() ?? "")
+        .join("");
+
+      // ---- Build payload ---------------------------------------------------------
       const payload = {
-        id: isEdit ? edit : `task-${user.id}-${Date.now()}`,
-        title: title.trim(),
-        description: description.trim(),
-        status,
-        first_name: user.user_metadata?.first_name ?? "User",
-        last_name: user.user_metadata?.last_name ?? "",
-        color: "#6366f1",
-        team_id: teamId,
-        user_id: user.id,
+        id: `team-${user.id}-${Date.now()}`,
+        name: name.trim(),
+        members: parseInt(members, 10) || 1, // fallback to 1 if NaN
+        color: "#6366f1", // default primary
+        initials,
+        // user_id: user.id, // optional – keep for ownership
       };
 
-      const { error } = await supabase
-        .from("tasks")
-        .upsert(payload, { onConflict: "id" });
-
+      const { error } = await supabase.from("teams").insert(payload);
       if (error) throw error;
 
-      router.replace("/(tabs)/task");
+      router.replace("/(tabs)/teams");
     } catch (err: any) {
-      setError(err.message || "Failed to save task");
+      setError(err.message || "Failed to create team");
     } finally {
       setLoading(false);
     }
@@ -100,17 +81,16 @@ export default function TaskCreation() {
 
   return (
     <>
-      <HeaderSafeAreaView />
       <KeyboardAvoidingWrapper
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View className="flex-1 bg-background">
-          {/* Header */}
+          {/* ---------- Header ---------- */}
           <View className="flex-row items-center pt-4 pb-3 bg-primary px-4">
             <Button
               variant="ghost"
               onPress={() => router.back()}
-              className="rounded-full p-2"
+              className="rounded-full"
               iconProps={{
                 name: "arrow-left",
                 size: 24,
@@ -119,17 +99,15 @@ export default function TaskCreation() {
             />
             <View className="flex-1 ml-3">
               <Text className="text-3xl font-bold text-white tracking-tight">
-                {isEdit ? "Edit Task" : "New Task"}
+                New Team
               </Text>
               <Text className="text-primary-100 mt-1">
-                {isEdit
-                  ? "Update task details"
-                  : "Add a task to keep your project on track"}
+                Create a team to collaborate on projects
               </Text>
             </View>
           </View>
 
-          {/* Form ScrollView */}
+          {/* ---------- Form ---------- */}
           <ScrollView
             className="flex-1"
             contentContainerStyle={{ padding: 16, paddingTop: 8 }}
@@ -144,9 +122,9 @@ export default function TaskCreation() {
                     className="w-10 h-10 border-2 border-background"
                     first_name="T"
                     last_name="S"
-                    alt="Task"
+                    alt="Team"
                   />
-                  <CardTitle className="text-lg">Task Details</CardTitle>
+                  <CardTitle className="text-lg">Team Details</CardTitle>
                 </View>
               </CardHeader>
 
@@ -154,53 +132,31 @@ export default function TaskCreation() {
 
               <CardContent className="space-y-5 pt-4">
                 <Input
-                  value={title}
-                  onChangeText={setTitle}
-                  placeholder="Task Title"
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Team Name"
                   className="rounded-lg px-4 py-3 text-foreground"
                   placeholderTextColor="rgb(156,163,175)"
-                  autoCapitalize="sentences"
+                  autoCapitalize="words"
                   iconProps={{
-                    name: "folder-plus-outline",
+                    name: "pulse",
                     size: 20,
                     className: "text-muted-foreground",
                   }}
                 />
 
                 <Input
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="Task Description (optional)"
+                  value={members}
+                  onChangeText={setMembers}
+                  placeholder="Number of Members"
                   className="rounded-lg px-4 py-3 text-foreground"
                   placeholderTextColor="rgb(156,163,175)"
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
+                  keyboardType="numeric"
                   iconProps={{
-                    name: "file-outline",
+                    name: "pulse",
                     size: 20,
                     className: "text-muted-foreground",
                   }}
-                />
-
-                <DropdownMenu
-                  items={[
-                    { label: "Todo", value: "Todo" },
-                    { label: "In Progress", value: "InProgress" },
-                    { label: "Done", value: "Done" },
-                  ]}
-                  selectedValue={status}
-                  onSelect={(v) => setStatus(v as typeof status)}
-                  placeholder="Select Status"
-                  className="rounded-lg border border-input"
-                />
-
-                <DropdownMenu
-                  items={teamOptions}
-                  selectedValue={teamId}
-                  onSelect={setTeamId}
-                  placeholder="Select Team"
-                  className="rounded-lg border border-input"
                 />
               </CardContent>
 
@@ -217,23 +173,24 @@ export default function TaskCreation() {
                   text="Cancel"
                   variant="outline"
                   size="default"
-                  className="flex-1"
+                  className="flex-1 text-center"
                   onPress={() => router.back()}
                 />
                 <Button
-                  text={isEdit ? "Update" : "Create"}
+                  text="Create"
                   variant="default"
                   size="default"
-                  className="flex-1 bg-primary"
+                  className="flex-1 text-center"
                   onPress={handleSubmit}
-                  disabled={loading || !title.trim()}
+                  disabled={loading || !name.trim() || !members.trim() || !user}
                 />
               </CardFooter>
 
+              {/* Full-screen loading overlay (optional but nice) */}
               {loading && (
                 <View className="absolute inset-0 bg-background/80 flex items-center justify-center">
                   <ActivityIndicator size="large" color="#6366f1" />
-                  <Text className="mt-3 text-foreground">Saving task...</Text>
+                  <Text className="mt-3 text-foreground">Creating team...</Text>
                 </View>
               )}
             </Card>
