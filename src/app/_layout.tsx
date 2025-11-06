@@ -1,145 +1,110 @@
 import { Stack, useRouter } from "expo-router";
-import { createContext, useContext, useState, useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "react-native";
-import "../../global.css";
-import "~/components/ui/bottom-sheets";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SheetProvider } from "react-native-actions-sheet";
-import type { User } from "@supabase/supabase-js";
-import supabase from "~/lib/utils/supabase";
+import NetInfo from "@react-native-community/netinfo";
+import { useEffect, useState } from "react";
+import "../../global.css";
+import "~/components/ui/bottom-sheets";
+import SessionInitializer, {
+  useSessionInit,
+} from "~/components/core/SessionInitializer";
+import View from "~/components/ui/view";
+import { Text } from "~/components/ui/text";
+import LoadingAnimation from "~/components/core/initial-loading";
 
-interface AuthContextType {
-  loggedIn: boolean;
-  hasProfile: boolean;
-  user: User | null;
-  setLoggedIn: (value: boolean) => void;
-  setHasProfile: (value: boolean) => void;
-  setUser: (user: User | null) => void;
-  checkAuthState: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType>({
-  loggedIn: false,
-  hasProfile: false,
-  user: null,
-  setLoggedIn: () => {},
-  setHasProfile: () => {},
-  setUser: () => {},
-  checkAuthState: async () => {},
-});
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
-
-export default function RootLayout() {
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [hasProfile, setHasProfile] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+const AppContent = () => {
+  const { loading, loggedIn, hasProfile } = useSessionInit();
+  const [isOffline, setIsOffline] = useState(false);
   const router = useRouter();
 
-  const checkAuthState = async () => {
-    try {
-      setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        setLoggedIn(false);
-        setHasProfile(false);
-        setUser(null);
-        return;
-      }
-
-      setLoggedIn(true);
-      setUser(session.user);
-
-      const { data: profile, error } = await supabase
-        .from("users")
-        .select("id, first_name, last_name")
-        .eq("id", session.user.id)
-        .single();
-
-      if (error || !profile || (!profile.first_name && !profile.last_name)) {
-        setHasProfile(false);
-      } else {
-        setHasProfile(true);
-      }
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      setLoggedIn(false);
-      setHasProfile(false);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    checkAuthState();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoggedIn(!!session);
-      checkAuthState();
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const offline = !state.isConnected || !state.isInternetReachable;
+      setIsOffline(offline);
+      console.log("Network state:", offline ? "Offline" : "Online");
     });
 
-    return () => subscription.unsubscribe();
+    NetInfo.fetch().then((state) => {
+      const offline = !state.isConnected || !state.isInternetReachable;
+      setIsOffline(offline);
+      console.log("Initial network state:", offline ? "Offline" : "Online");
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading) {
+      console.log("Session loading, skipping navigation");
+      return;
+    }
+
+    console.log("Navigation decision:", { loggedIn, hasProfile, isOffline });
+    if (isOffline) {
+      console.log("Offline, staying on current screen");
+      return;
+    }
 
     const timer = setTimeout(() => {
       if (!loggedIn) {
+        console.log("Redirecting to welcome (not logged in)");
         router.replace("/(onboarding)/welcome");
       } else if (!hasProfile) {
+        console.log("Redirecting to setup (no profile)");
         router.replace("/(onboarding)/setup");
       } else {
+        console.log("Redirecting to dashboard (authenticated and has profile)");
         router.replace("/(tabs)/dashboard");
       }
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [loggedIn, hasProfile, loading, router]);
+  }, [loading, loggedIn, hasProfile, isOffline, router]);
 
   if (loading) {
-    return null;
+    console.log("Rendering null during loading");
+    return (
+      <LoadingAnimation />
+    );
+  }
+
+  if (isOffline) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <Text className="text-foreground text-lg">No internet connection</Text>
+        <Text className="text-muted-foreground mt-2">
+          Please check your network and try again
+        </Text>
+      </View>
+    );
   }
 
   return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)/sign-up" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="(onboarding)/setup"
+        options={{ headerShown: false }}
+      />
+    </Stack>
+  );
+};
+
+export default function RootLayout() {
+  return (
     <SheetProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <AuthContext.Provider
-          value={{
-            loggedIn,
-            hasProfile,
-            user,
-            setLoggedIn,
-            setHasProfile,
-            setUser,
-            checkAuthState,
-          }}
-        >
-          <SafeAreaView style={{ flex: 1 }}>
-            <StatusBar
-              backgroundColor="#6366f1" // bg-primary
-              barStyle="light-content"
-            />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)/sign-up" options={{ headerShown: false }} />
-              <Stack.Screen name="(onboarding)/setup" options={{ headerShown: false }} />
-            </Stack>
-          </SafeAreaView>
-        </AuthContext.Provider>
+        <SafeAreaView style={{ flex: 1 }}>
+          <StatusBar backgroundColor="green" barStyle="light-content" />
+          <SessionInitializer>
+            <AppContent />
+          </SessionInitializer>
+        </SafeAreaView>
       </GestureHandlerRootView>
     </SheetProvider>
   );

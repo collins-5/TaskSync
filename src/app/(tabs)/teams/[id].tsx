@@ -18,7 +18,6 @@ import {
 import { Button } from "~/components/ui/button";
 import { Avatar } from "~/components/ui/avatar";
 import { Separator } from "~/components/ui/separator";
-import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
 import { useSupabaseData } from "~/hooks/useSupabaseData";
 
 export default function TeamDetails() {
@@ -116,7 +115,6 @@ export default function TeamDetails() {
 
   return (
     <View className="flex-1 bg-background">
-      <HeaderSafeAreaView />
       <View className="px-5 pt-4 pb-3 bg-primary">
         <Text className="text-3xl font-bold text-white tracking-tight">
           {team.name}

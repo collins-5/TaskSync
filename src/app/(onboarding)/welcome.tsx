@@ -1,11 +1,11 @@
 import { View, Text, ImageBackground } from "react-native";
 import { useRouter } from "expo-router";
 import { Button } from "~/components/ui/button";
-import { useAuth } from "../_layout"; // Adjust path based on your project structure
+import { useSessionInit } from "~/components/core/SessionInitializer";
 
 export default function Welcome() {
   const router = useRouter();
-  const { loggedIn } = useAuth();
+  const { loggedIn, hasProfile } = useSessionInit();
 
   return (
     <ImageBackground
@@ -23,12 +23,14 @@ export default function Welcome() {
         <Button
           text="Get Started"
           size="lg"
-          className="text-foreground"
+          className="text-primary-foreground"
           onPress={() => {
             if (!loggedIn) {
-              router.push("/sign-in");
-            } else {
+              router.push("/(auth)/sign-up");
+            } else if (!hasProfile) {
               router.push("/(onboarding)/setup");
+            } else {
+              router.push("/(tabs)/dashboard");
             }
           }}
           accessibilityLabel="Get started button"

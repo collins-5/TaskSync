@@ -1,4 +1,10 @@
-import { View, Text, Platform, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  Platform,
+  ActivityIndicator,
+  ScrollView,
+} from "react-native";
 import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 
@@ -17,15 +23,14 @@ import { DropdownMenu } from "~/components/ui/drop-down-menu";
 import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
 import { useSupabaseData } from "~/hooks/useSupabaseData";
-import { useAuth } from "~/app/_layout";
+import { useSessionInit } from "~/components/core/SessionInitializer"; // Correct import
 import supabase from "~/lib/utils/supabase";
-import { ScrollView } from "react-native-actions-sheet";
 
 export default function TaskCreation() {
   const router = useRouter();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const { tasks, teams } = useSupabaseData();
-  const { user } = useAuth();
+  const { user } = useSessionInit(); // Now correct
 
   const isEdit = !!edit;
   const taskToEdit = isEdit ? tasks.find((t) => t.id === edit) : null;
@@ -47,20 +52,34 @@ export default function TaskCreation() {
     value: t.id,
   }));
 
+  // Sync form with taskToEdit when editing
+  useEffect(() => {
+    if (isEdit && taskToEdit) {
+      setTitle(taskToEdit.title ?? "");
+      setDescription(taskToEdit.description ?? "");
+      setStatus((taskToEdit.status as typeof status) ?? "Todo");
+      setTeamId(taskToEdit.team_id ?? teams[0]?.id ?? "");
+    }
+  }, [isEdit, taskToEdit, teams]);
+
   const handleSubmit = async () => {
-    if (!title.trim() || !user) return;
+    if (!title.trim() || !user) {
+      setError("Title and user are required");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
       const payload = {
         id: isEdit ? edit : `task-${user.id}-${Date.now()}`,
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
         status,
         first_name: user.user_metadata?.first_name ?? "User",
         last_name: user.user_metadata?.last_name ?? "",
-        color: "#6366f1", // default primary
+        color: "#6366f1",
         team_id: teamId,
         user_id: user.id,
       };
@@ -72,8 +91,8 @@ export default function TaskCreation() {
       if (error) throw error;
 
       router.replace("/(tabs)/task");
-    } catch (err) {
-      setError((err as Error).message || "Failed to save task");
+    } catch (err: any) {
+      setError(err.message || "Failed to save task");
     } finally {
       setLoading(false);
     }
@@ -91,7 +110,7 @@ export default function TaskCreation() {
             <Button
               variant="ghost"
               onPress={() => router.back()}
-              className="rounded-full"
+              className="rounded-full p-2"
               iconProps={{
                 name: "arrow-left",
                 size: 24,
@@ -110,10 +129,11 @@ export default function TaskCreation() {
             </View>
           </View>
 
-          {/* Form */}
+          {/* Form ScrollView */}
           <ScrollView
             className="flex-1"
             contentContainerStyle={{ padding: 16, paddingTop: 8 }}
+            showsVerticalScrollIndicator={false}
           >
             <Card className="bg-card rounded-2xl shadow-lg overflow-hidden">
               <View className="h-2 bg-primary" />
@@ -124,7 +144,7 @@ export default function TaskCreation() {
                     className="w-10 h-10 border-2 border-background"
                     first_name="T"
                     last_name="S"
-                    alt="TaskSync"
+                    alt="Task"
                   />
                   <CardTitle className="text-lg">Task Details</CardTitle>
                 </View>
@@ -185,7 +205,9 @@ export default function TaskCreation() {
               </CardContent>
 
               {error && (
-                <Text className="text-red-500 text-center px-4">{error}</Text>
+                <View className="px-4 pb-3">
+                  <Text className="text-red-500 text-center">{error}</Text>
+                </View>
               )}
 
               <Separator className="mx-4 bg-muted/50" />
@@ -209,11 +231,10 @@ export default function TaskCreation() {
               </CardFooter>
 
               {loading && (
-                <ActivityIndicator
-                  size="large"
-                  color="#6366f1"
-                  style={{ marginTop: 20 }}
-                />
+                <View className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                  <ActivityIndicator size="large" color="#6366f1" />
+                  <Text className="mt-3 text-foreground">Saving task...</Text>
+                </View>
               )}
             </Card>
           </ScrollView>
