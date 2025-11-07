@@ -108,6 +108,9 @@ export type IconNames = Extract<
   | 'microphone'
   | 'microphone-off'
   | 'attachment'
+  | 'send'
+  | 'menu'
+  
 >;
 
 type ImageIconProps = {

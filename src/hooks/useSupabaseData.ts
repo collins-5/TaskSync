@@ -1,5 +1,7 @@
+// hooks/useSupabaseData.ts
 import { useEffect, useState, useRef } from "react";
 import supabase from "~/lib/utils/supabase";
+import { useSessionInit } from "~/components/core/SessionInitializer";
 
 export type Team = {
   id: string;
@@ -41,218 +43,189 @@ export type ChatHistory = {
 };
 
 export const useSupabaseData = () => {
+  const { user } = useSessionInit();
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelRef = useRef<any>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Check for session first to avoid AuthSessionMissingError
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.error("Session error:", sessionError);
-          setError("Session error");
-          return;
-        }
-        
-        if (!session || !session.user) {
-          // No session, clear data and return early
-          setProfile(null);
-          setTeams([]);
-          setTasks([]);
-          setChatHistory([]);
-          return;
-        }
+  const fetchAll = async () => {
+    if (!user) {
+      setProfile(null);
+      setTeams([]);
+      setTasks([]);
+      setChatHistory([]);
+      return;
+    }
 
-        const user = session.user;
+    setLoading(true);
+    setError(null);
+    try {
+      // Profile
+      let profileData: Profile | null = null;
+      const { data: p, error: pErr } = await supabase
+        .from("users")
+        .select("id, email, first_name, last_name, image, created_at")
+        .eq("id", user.id)
+        .single();
 
-        // Fetch user profile
-        const { data: profileData, error: profileError } = await supabase
+      if (pErr && pErr.message.includes("column users.image does not exist")) {
+        const { data: f, error: fErr } = await supabase
           .from("users")
-          .select("id, email, first_name, last_name, image, created_at")
+          .select("id, email, first_name, last_name, created_at")
           .eq("id", user.id)
           .single();
-        if (profileError) {
-          if (profileError.message.includes("column users.image does not exist")) {
-            // Fallback to query without image
-            const { data: fallbackData, error: fallbackError } = await supabase
-              .from("users")
-              .select("id, email, first_name, last_name, created_at")
-              .eq("id", user.id)
-              .single();
-            if (fallbackError) throw new Error(`Profile fetch error: ${fallbackError.message}`);
-            setProfile(fallbackData || null);
-          } else {
-            throw new Error(`Profile fetch error: ${profileError.message}`);
+        if (fErr) throw fErr;
+        profileData = f;
+      } else if (pErr) throw pErr;
+      else profileData = p;
+      setProfile(profileData);
+
+      // Teams
+      const { data: t, error: tErr } = await supabase.from("teams").select("*");
+      if (tErr) throw tErr;
+      setTeams((t || []) as Team[]);
+
+      // Tasks
+      const { data: tasksRaw, error: taskErr } = await supabase
+        .from("tasks")
+        .select("id, title, description, status, color, team_id, user_id, created_at, users(first_name, last_name)")
+        .eq("user_id", user.id);
+      if (taskErr) throw taskErr;
+
+      const transformed: Task[] = (tasksRaw || []).map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description || "",
+        status: t.status,
+        first_name: t.users?.first_name || "",
+        last_name: t.users?.last_name || "",
+        color: t.color,
+        team_id: t.team_id,
+        user_id: t.user_id,
+        created_at: t.created_at,
+      }));
+      setTasks(transformed);
+
+      // Chat History
+      const { data: chat, error: chatErr } = await supabase
+        .from("chat_history")
+        .select("id, user_id, prompt, response, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+      if (chatErr) throw chatErr;
+      setChatHistory((chat || []) as ChatHistory[]);
+    } catch (e: any) {
+      setError(e.message || "Failed to load data");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAll();
+  }, [user]);
+
+  // Real-time subscriptions
+  useEffect(() => {
+    if (!user) return;
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
+
+    const channel = supabase
+      .channel("data")
+      // Profile changes
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "users", filter: `id=eq.${user.id}` },
+        (payload) => {
+          const newProfile = payload.new as Profile | null;
+          if (newProfile) {
+            setProfile(newProfile);
+          } else if (payload.eventType === "DELETE") {
+            setProfile(null);
           }
-        } else {
-          setProfile(profileData || null);
         }
+      )
+      // Teams changes
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "teams" },
+        (payload) => {
+          const newTeam = payload.new as Team;
+          const oldTeam = payload.old as { id: string };
 
-        // Fetch teams
-        const { data: teamsData, error: teamsError } = await supabase
-          .from("teams")
-          .select("*")
-          .order("created_at", { ascending: true });
-        if (teamsError) throw new Error(`Teams fetch error: ${teamsError.message}`);
-        setTeams(teamsData || []);
-
-        // Fetch tasks
-        const { data: tasksData, error: tasksError } = await supabase
-          .from("tasks")
-          .select("id, title, description, status, color, team_id, user_id, created_at, users(first_name, last_name)")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-        if (tasksError) throw new Error(`Tasks fetch error: ${tasksError.message}`);
-        // Transform tasks data to match Task type
-        const transformedTasks = tasksData?.map((task) => ({
-          id: task.id,
-          title: task.title,
-          description: task.description || "",
-          status: task.status,
-          first_name: task.users?.first_name || "",
-          last_name: task.users?.last_name || "",
-          color: task.color,
-          team_id: task.team_id,
-          user_id: task.user_id,
-          created_at: task.created_at,
-        })) || [];
-        setTasks(transformedTasks);
-
-        // Fetch chat history
-        const { data: chatData, error: chatError } = await supabase
-          .from("chat_history")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-        if (chatError) throw new Error(`Chat history fetch error: ${chatError.message}`);
-        setChatHistory(chatData || []);
-      } catch (err) {
-        const errorMessage = (err as Error).message || "Failed to fetch data";
-        setError(errorMessage);
-        console.error("Supabase fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-
-    // Real-time subscriptions - only set up if we have a session
-    const setupSubscriptions = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        return;
-      }
-
-      const userId = session.user.id;
-      
-      // Clean up existing channel if any
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
-      
-      channelRef.current = supabase
-        .channel("supabase-data")
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "users",
-            filter: `id=eq.${userId}`,
-          },
-          (payload) => {
-            setProfile(payload.new as Profile);
-            console.log("Real-time profile update:", payload);
+          if (payload.eventType === "INSERT") {
+            setTeams((prev) => [...prev, newTeam]);
+          } else if (payload.eventType === "UPDATE") {
+            setTeams((prev) => prev.map((t) => (t.id === newTeam.id ? newTeam : t)));
+          } else if (payload.eventType === "DELETE") {
+            setTeams((prev) => prev.filter((t) => t.id !== oldTeam.id));
           }
-        )
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "teams" },
-          (payload) => {
-            if (payload.eventType === "INSERT") {
-              setTeams((prev) => [...prev, payload.new as Team]);
-            } else if (payload.eventType === "UPDATE") {
-              setTeams((prev) =>
-                prev.map((team) => (team.id === payload.new.id ? (payload.new as Team) : team))
-              );
-            } else if (payload.eventType === "DELETE") {
-              setTeams((prev) => prev.filter((team) => team.id !== payload.old.id));
-            }
-            console.log("Real-time teams update:", payload);
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "tasks",
-            filter: `user_id=eq.${userId}`,
-          },
-          (payload) => {
-            if (payload.eventType === "INSERT") {
-              const newTask = {
-                ...(payload.new as any),
-                first_name: payload.new.users?.first_name || "",
-                last_name: payload.new.users?.last_name || "",
-              };
-              setTasks((prev) => [newTask, ...prev]);
-            } else if (payload.eventType === "UPDATE") {
-              setTasks((prev) =>
-                prev.map((task) =>
-                  task.id === payload.new.id
-                    ? { ...(payload.new as any), first_name: payload.new.users?.first_name || "", last_name: payload.new.users?.last_name || "" }
-                    : task
-                )
-              );
-            } else if (payload.eventType === "DELETE") {
-              setTasks((prev) => prev.filter((task) => task.id !== payload.old.id));
-            }
-            console.log("Real-time tasks update:", payload);
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "chat_history",
-            filter: `user_id=eq.${userId}`,
-          },
-          (payload) => {
-            if (payload.eventType === "INSERT") {
-              setChatHistory((prev) => [payload.new as ChatHistory, ...prev]);
-            } else if (payload.eventType === "UPDATE") {
-              setChatHistory((prev) =>
-                prev.map((chat) => (chat.id === payload.new.id ? (payload.new as ChatHistory) : chat))
-              );
-            } else if (payload.eventType === "DELETE") {
-              setChatHistory((prev) => prev.filter((chat) => chat.id !== payload.old.id));
-            }
-            console.log("Real-time chat history update:", payload);
-          }
-        )
-        .subscribe();
-    };
+        }
+      )
+      // Tasks changes
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const raw = payload.new as any;
+          const old = payload.old as { id: string };
 
-    setupSubscriptions();
+          // Transform nested `users` object
+          const task: Task = {
+            id: raw.id,
+            title: raw.title,
+            description: raw.description || "",
+            status: raw.status,
+            first_name: raw.users?.first_name || "",
+            last_name: raw.users?.last_name || "",
+            color: raw.color,
+            team_id: raw.team_id,
+            user_id: raw.user_id,
+            created_at: raw.created_at,
+          };
+
+          if (payload.eventType === "INSERT") {
+            setTasks((prev) => [task, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            setTasks((prev) => prev.map((t) => (t.id === task.id ? task : t)));
+          } else if (payload.eventType === "DELETE") {
+            setTasks((prev) => prev.filter((t) => t.id !== old.id));
+          }
+        }
+      )
+      // Chat History changes
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "chat_history", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const newChat = payload.new as ChatHistory;
+          const oldChat = payload.old as { id: number };
+
+          if (payload.eventType === "INSERT") {
+            setChatHistory((prev) => [...prev, newChat]);
+          } else if (payload.eventType === "UPDATE") {
+            setChatHistory((prev) => prev.map((c) => (c.id === newChat.id ? newChat : c)));
+          } else if (payload.eventType === "DELETE") {
+            setChatHistory((prev) => prev.filter((c) => c.id !== oldChat.id));
+          }
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
 
     return () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
       }
     };
-  }, []);
+  }, [user]);
 
-  return { profile, teams, tasks, chatHistory, loading, error };
+  return { profile, teams, tasks, chatHistory, loading, error, refetch: fetchAll };
 };
