@@ -7,10 +7,12 @@ import { useSupabaseData } from "~/hooks/useSupabaseData";
 import { TaskCard } from "~/components/core/TaskCard";
 import SkeletonList from "~/components/core/SkeletonList";
 import { TaskCardSkeleton } from "~/components/core/TaskCardSkeleton";
+import NoResultFound from "~/components/core/no-results-found";
+import Icon from "~/components/ui/icon";
 
 export default function Tasks() {
   const router = useRouter();
-  const { tasks, teams, loading, error } = useSupabaseData();
+  const { tasks, loading, error } = useSupabaseData();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(() => {
@@ -35,38 +37,47 @@ export default function Tasks() {
         <Text className="text-primary-100 mt-1">Your project tasks</Text>
       </View>
 
-      {loading ? (<SkeletonList skeletonComponent={TaskCardSkeleton} count={9}/>):(
-      <FlatList
-        data={tasks}
-        renderItem={({ item }) => (
-          <TaskCard
-            task={{
-              id: item.id,
-              title: item.title,
-              description: item.description || "No description",
-              status: item.status,
-              first_name: item.first_name || "Unknown",
-              last_name: item.last_name || "",
-              color: item.color,
-              team_id: item.team_id,
-            }}
-          />
-        )}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16, paddingTop: 8 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#fff"
-            colors={["#fff"]}
-          />
-        }
-        ListEmptyComponent={
-          <SkeletonList skeletonComponent={TaskCardSkeleton} count={9}/>
-        }
-      />)}
+      {loading ? (
+        <SkeletonList skeletonComponent={TaskCardSkeleton} count={9} />
+      ) : (
+        <FlatList
+          data={tasks}
+          renderItem={({ item }) => (
+            <TaskCard
+              task={{
+                id: item.id,
+                title: item.title,
+                description: item.description || "No description",
+                status: item.status,
+                first_name: item.first_name || "Unknown",
+                last_name: item.last_name || "",
+                color: item.color,
+                team_id: item.team_id,
+              }}
+            />
+          )}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ padding: 16, paddingTop: 8 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#fff"
+              colors={["#fff"]}
+            />
+          }
+          ListEmptyComponent={
+            <View className="mt-6">
+            <NoResultFound
+              icon={<Icon name="view-list" size={24} />}
+              title="No Tasks Found"
+              message="No tasks available. Tap the + button hto create a new task."
+            />
+            </View>
+          }
+        />
+      )}
 
       <Button
         variant="default"

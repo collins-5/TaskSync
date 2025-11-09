@@ -1,13 +1,6 @@
 import React from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  TouchableWithoutFeedback,
-  Keyboard,
-  ViewStyle,
-} from "react-native";
-import { cn } from "~/lib/utils"; // Assuming you have a Tailwind helper like `cn`
+import { KeyboardAvoidingView, Platform, ViewStyle } from "react-native";
+import { cn } from "~/lib/utils";
 
 interface KeyboardAvoidingWrapperProps {
   children: React.ReactNode;
@@ -15,9 +8,9 @@ interface KeyboardAvoidingWrapperProps {
   showsVerticalScrollIndicator?: boolean;
   contentContainerStyle?: ViewStyle;
   keyboardVerticalOffset?: number;
-  behavior?: "padding" | "height" | "position"; // Add behavior
-  style?: ViewStyle; // Allow custom outer styles
-  className?: string; // Allow Tailwind classes
+  behavior?: "padding" | "height" | "position";
+  style?: ViewStyle;
+  className?: string;
 }
 
 export default function KeyboardAvoidingWrapper({
@@ -33,23 +26,11 @@ export default function KeyboardAvoidingWrapper({
   return (
     <KeyboardAvoidingView
       style={[{ flex: 1 }, style]}
-      className={cn("bg-background", className)} // Default bg to match app
+      className={cn("bg-background", className)}
       behavior={behavior}
       keyboardVerticalOffset={keyboardVerticalOffset}
     >
-      <ScrollView
-        contentContainerStyle={[
-          { flexGrow: 1 },
-          contentContainerStyle,
-        ]}
-        scrollEnabled={scrollEnabled}
-        showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-        keyboardShouldPersistTaps="handled"
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          {children}
-        </TouchableWithoutFeedback>
-      </ScrollView>
+      {children}
     </KeyboardAvoidingView>
   );
 }

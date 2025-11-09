@@ -1,7 +1,8 @@
+// app/_layout.tsx
 import { Stack, useRouter } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { SheetProvider } from "react-native-actions-sheet";
 import NetInfo from "@react-native-community/netinfo";
 import { useEffect, useState } from "react";
@@ -10,24 +11,29 @@ import "~/components/ui/bottom-sheets";
 import SessionInitializer, {
   useSessionInit,
 } from "~/components/core/SessionInitializer";
-import View from "~/components/ui/view";
-import { Text } from "~/components/ui/text";
 import LoadingAnimation from "~/components/core/initial-loading";
+import NetworkError from "~/components/core/NetworkError";
 
 const AppContent = () => {
   const { loading, loggedIn, hasProfile } = useSessionInit();
   const [isOffline, setIsOffline] = useState(false);
   const router = useRouter();
 
+  /* --------------------------------------------------------------
+     NetInfo listener – true = offline
+     -------------------------------------------------------------- */
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
-      const offline = !state.isConnected || !state.isInternetReachable;
+      const offline =
+        state.isConnected === false || state.isInternetReachable === false;
       setIsOffline(offline);
       console.log("Network state:", offline ? "Offline" : "Online");
     });
 
+    // initial check
     NetInfo.fetch().then((state) => {
-      const offline = !state.isConnected || !state.isInternetReachable;
+      const offline =
+        state.isConnected === false || state.isInternetReachable === false;
       setIsOffline(offline);
       console.log("Initial network state:", offline ? "Offline" : "Online");
     });
@@ -35,27 +41,18 @@ const AppContent = () => {
     return () => unsubscribe();
   }, []);
 
+  /* --------------------------------------------------------------
+     Navigation logic – only run when NOT loading & NOT offline
+     -------------------------------------------------------------- */
   useEffect(() => {
-    if (loading) {
-      console.log("Session loading, skipping navigation");
-      return;
-    }
-
-    console.log("Navigation decision:", { loggedIn, hasProfile, isOffline });
-    if (isOffline) {
-      console.log("Offline, staying on current screen");
-      return;
-    }
+    if (loading || isOffline) return; // ← block navigation
 
     const timer = setTimeout(() => {
       if (!loggedIn) {
-        console.log("Redirecting to welcome (not logged in)");
         router.replace("/(onboarding)/welcome");
       } else if (!hasProfile) {
-        console.log("Redirecting to setup (no profile)");
         router.replace("/(onboarding)/setup");
       } else {
-        console.log("Redirecting to dashboard (authenticated and has profile)");
         router.replace("/(tabs)/dashboard");
       }
     }, 0);
@@ -64,21 +61,13 @@ const AppContent = () => {
   }, [loading, loggedIn, hasProfile, isOffline, router]);
 
   if (loading) {
-    console.log("Rendering null during loading");
-    return (
-      <LoadingAnimation />
-    );
+    return <LoadingAnimation />;
   }
 
   if (isOffline) {
-    return (
-      <View className="flex-1 items-center justify-center">
-        <Text className="text-foreground text-lg">No internet connection</Text>
-        <Text className="text-muted-foreground mt-2">
-          Please check your network and try again
-        </Text>
-      </View>
-    );
+    return <NetworkError 
+    onRetry={() => NetInfo.refresh()} 
+    />;
   }
 
   return (
@@ -97,15 +86,17 @@ const AppContent = () => {
 
 export default function RootLayout() {
   return (
-    <SheetProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaView style={{ flex: 1 }}>
-          <StatusBar backgroundColor="green" barStyle="light-content" />
-          <SessionInitializer>
-            <AppContent />
-          </SessionInitializer>
-        </SafeAreaView>
-      </GestureHandlerRootView>
-    </SheetProvider>
+    <SafeAreaProvider>
+      <SheetProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <SafeAreaView style={{ flex: 1 }}>
+            <StatusBar backgroundColor="green" barStyle="light-content" />
+            <SessionInitializer>
+              <AppContent />
+            </SessionInitializer>
+          </SafeAreaView>
+        </GestureHandlerRootView>
+      </SheetProvider>
+    </SafeAreaProvider>
   );
 }

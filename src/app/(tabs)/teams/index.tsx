@@ -16,6 +16,8 @@ import { useSupabaseData } from "~/hooks/useSupabaseData";
 import { TeamCard } from "~/components/core/TeamCard";
 import SkeletonList from "~/components/core/SkeletonList";
 import { TeamCardSkeleton } from "~/components/core/TeamCardSkeleton";
+import NoResultFound from "~/components/core/no-results-found";
+import Icon from "~/components/ui/icon";
 
 export default function Teams() {
   const router = useRouter();
@@ -64,7 +66,13 @@ export default function Teams() {
             />
           }
           ListEmptyComponent={
-            <SkeletonList skeletonComponent={TeamCardSkeleton} count={9} />
+            <View className="mt-6">
+              <NoResultFound
+                icon={<Icon name="view-list" size={24} />}
+                title="No Teams Found"
+                message="No teams available. Tap the + button hto create a new team."
+              />
+            </View>
           }
         />
       )}

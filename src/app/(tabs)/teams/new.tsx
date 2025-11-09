@@ -29,7 +29,7 @@ import supabase from "~/lib/utils/supabase";
 
 export default function TeamCreation() {
   const router = useRouter();
-  const { user } = useSessionInit(); // <-- your own session hook
+  const { user } = useSessionInit(); 
 
   const [name, setName] = useState("");
   const [members, setMembers] = useState("");

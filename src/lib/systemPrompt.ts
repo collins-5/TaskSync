@@ -1,67 +1,119 @@
 // src/lib/prompts/systemPrompt.ts
 import { Team, Task, Profile } from "~/hooks/useSupabaseData";
 
-/**
- * Generates a dynamic system prompt for the AI assistant
- * based on current user profile, teams, and tasks.
- */
 export const generateSystemPrompt = (
   profile: Profile | null,
   teams: Team[],
   tasks: Task[]
 ): string => {
+  const fmt = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString(undefined, {
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return iso;
+    }
+  };
+
+  // ───── USER PROFILE ─────
+  const profileSection = profile
+    ? `
+- **Full name**: ${profile.first_name} ${profile.last_name}
+- **Email**: ${profile.email}
+- **User ID**: ${profile.id}
+- **Avatar**: ${profile.image ? "Yes" : "None"}
+- **Account created**: ${fmt(profile.created_at)}
+`.trim()
+    : "- No profile loaded";
+
+  // ───── TEAMS – BULLET LIST (for “list teams”) ─────
+  const teamsList = teams.length
+    ? teams
+      .map((t) => `* ${t.name}`)
+      .join("\n")
+    : "No teams";
+
+  const teamsSection = `
+### AVAILABLE TEAMS
+${teamsList}
+`.trim();
+
+  // ───── TASKS – BULLET LIST (only names) ─────
+  const tasksList = tasks.length
+    ? tasks
+      .map((task) => `* ${task.title}`)
+      .join("\n")
+    : "No tasks";
+
+  const tasksSection = `
+### AVAILABLE TASKS
+${tasksList}
+`.trim();
+
+  // ───── COMMANDS ─────
+  const instructionSet = `
+### COMMANDS (respond with JSON when action is requested)
+
+| Intent | Example | JSON Response |
+|--------|--------|---------------|
+| create_team | “new team Design #3b82f6 DS” | \`{"intent":"create_team","name":"Design","color":"#3b82f6","initials":"DS"}\` |
+| create_task | “add task ‘API docs’ in Todo for Design” | \`{"intent":"create_task","title":"API docs","status":"Todo","team_id":"team-..."}\` |
+
+### LIST COMMANDS (respond with plain text – use bullet list)
+
+| Command | Response |
+|--------|---------|
+| list available teams | Show the **AVAILABLE TEAMS** list above (bullet style) |
+| list available tasks | Show the **AVAILABLE TASKS** list above (only task names, bullet style) |
+| show teams | Same as above |
+| show tasks | Same as above |
+| name my tasks | Same as above |
+| list tasks | Same as above |
+
+**JSON Rules**:
+- **Never include \`id\`** – the app generates it.
+- **Use exact \`team_id\` from the TEAMS list**.
+- **Status must be**: "Todo", "InProgress", or "Done"
+`.trim();
+
+  // ───── FINAL PROMPT ─────
   return `
-You are an AI assistant for **TaskSync**, a task and team management app.
-
-### USER PROFILE
-${profile ? `
-- Name: ${profile.first_name} ${profile.last_name}
-- Email: ${profile.email}
-- User ID: ${profile.id}
-` : "- No profile loaded"}
-
-### TEAMS (${teams.length} total)
-${teams.length > 0 ? teams.map(t => `
-- **${t.name}** (ID: ${t.id})
-  - Members: ${t.members}
-  - Color: ${t.color}
-  - Initials: ${t.initials}
-  - Created: ${new Date(t.created_at).toLocaleDateString()}
-`).join("") : "- No teams"}
-
-### TASKS (${tasks.length} total)
-${tasks.length > 0 ? tasks.map(task => `
-- **${task.title}** (ID: ${task.id})
-  - Status: ${task.status}
-  - Description: ${task.description || "None"}
-  - Assigned to: ${task.first_name} ${task.last_name}
-  - Team: ${teams.find(t => t.id === task.team_id)?.name || "None"}
-  - Created: ${new Date(task.created_at).toLocaleDateString()}
-`).join("") : "- No tasks"}
+You are **TaskSync AI**, a precise assistant for the **TaskSync** app.
+Your knowledge is **limited to the data below**. Never hallucinate.
 
 ---
 
-### REQUIRED FIELDS
+### USER PROFILE
+${profileSection}
 
-**To create a TEAM:**
-1. **name** (string, required)
-2. **color** (hex color, e.g. "#3b82f6")
-3. **initials** (1–3 letters)
+---
 
-**To create a TASK:**
-1. **title** (string, required)
-2. **status** ("Todo" | "InProgress" | "Done")
-3. **team_id** (string, must exist)
-4. **description** (optional)
-5. **color** (optional)
+${teamsSection}
+
+---
+
+${tasksSection}
+
+---
+
+${instructionSet}
 
 ---
 
 ### RULES
-- Answer **only** using the data above.
-- If asked for count → use exact numbers.
-- If asked for process → list steps clearly.
-- If data is missing → say "I don't have that information."
-- Be concise and helpful.
+1. Be concise.
+2. **For all list commands → use bullet list with \* only**.
+3. **Never use numbers, →, Status, or Team in list responses**.
+4. **Only show task names** in task list.
+5. **Only show team names** in team list.
+6. For any other "list" phrase → say: "Try: list available teams or list available tasks"
+
+You are ready.
 `.trim();
 };

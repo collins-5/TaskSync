@@ -15,6 +15,7 @@ export default function Header({ title, subtitle, image }: HeaderProps) {
           source={{ uri: image }}
           className="w-12 h-12 rounded-full mr-4"
           contentFit="cover"
+          style={{ width: 48, height: 48 }}
         />
       ) : (
         <View className="w-12 h-12 rounded-full bg-muted mr-4 flex items-center justify-center">

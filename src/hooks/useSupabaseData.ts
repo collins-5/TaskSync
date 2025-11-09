@@ -227,5 +227,5 @@ export const useSupabaseData = () => {
     };
   }, [user]);
 
-  return { profile, teams, tasks, chatHistory, loading, error, refetch: fetchAll };
+  return { profile, user, teams, tasks, chatHistory, loading, error, refetch: fetchAll };
 };

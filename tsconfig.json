@@ -5,12 +5,9 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "~/*": [
-        "./src/*"
-      ],
-      "@/*": [
-        "./src/*"
-      ]
+      "~/*": ["./src/*"],
+      "@/*": ["./src/*"],
+      "@assets/*": ["assets/*"]  // ← ADD THIS LINE
     },
     "types": [
       "react",
@@ -24,4 +21,3 @@
     "nativewind-env.d.ts"
   ]
 }
-// Password@123

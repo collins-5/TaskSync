@@ -9,8 +9,8 @@ export default function TabsLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: "#3b82f6", // Tailwind blue-500
-          tabBarInactiveTintColor: "#6b7280", // Tailwind gray-500
+          tabBarActiveTintColor: "green",
+          tabBarInactiveTintColor: "#6b7280", 
           tabBarStyle: { backgroundColor: "#fff" },
         }}
       >
