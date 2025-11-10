@@ -10,7 +10,7 @@ export default function TabsLayout() {
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: "green",
-          tabBarInactiveTintColor: "#6b7280", 
+          tabBarInactiveTintColor: "#6b7280",
           tabBarStyle: { backgroundColor: "#fff" },
         }}
       >
@@ -42,6 +42,15 @@ export default function TabsLayout() {
           name="task"
           options={{
             tabBarLabel: "Task",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="menu" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="news"
+          options={{
+            tabBarLabel: "news",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="menu" size={size} color={color} />
             ),

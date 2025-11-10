@@ -1,5 +1,4 @@
 // COMPLETE ERROR-FREE AI-CHAT.TSX FILE
-
 import {
   View,
   ActivityIndicator,
@@ -37,24 +36,19 @@ const formatTimestamp = (dateString: string): string => {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  // Same day, show time
   if (diffDays === 0) {
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) {
-      return date.toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit",
-      });
-    }
+    return date.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    });
   }
 
-  // Within 7 days, show day
   if (diffDays < 7) {
     return date.toLocaleDateString([], { weekday: "short" });
   }
 
-  // Older: show date
   return date.toLocaleDateString([], {
     month: "short",
     day: "numeric",
@@ -111,6 +105,7 @@ export default function AIChat() {
     loading: aiLoading,
     generate,
   } = useAIAssistant();
+
   const {
     profile,
     chatHistory,
@@ -118,6 +113,7 @@ export default function AIChat() {
     error: dataError,
     refetch,
   } = useSupabaseData();
+
   const { user } = useSessionInit();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -136,7 +132,7 @@ export default function AIChat() {
   // -----------------------------------------------------------------
   // 1. Conversation
   // -----------------------------------------------------------------
-  const conversation = Array.isArray(chatHistory)
+  const conversation: Message[] = Array.isArray(chatHistory)
     ? chatHistory
         .filter((e): e is NonNullable<typeof e> => !!e && typeof e === "object")
         .map((e) => ({
@@ -152,13 +148,13 @@ export default function AIChat() {
     : [];
 
   // -----------------------------------------------------------------
-  // 2. Auto‑scroll on new message
+  // 2. Auto-scroll on new message
   // -----------------------------------------------------------------
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [conversation.length, aiLoading, isSaving, lastSentPrompt]);
 
   // -----------------------------------------------------------------
@@ -174,7 +170,7 @@ export default function AIChat() {
   }, [showScrollButton]);
 
   // -----------------------------------------------------------------
-  // 4. SAVE ONLY ONCE
+  // 4. Save to Supabase (only once)
   // -----------------------------------------------------------------
   useEffect(() => {
     if (!lastSentPrompt || !aiResponse || aiLoading || !user || isSaving)
@@ -183,6 +179,7 @@ export default function AIChat() {
       setLastSentPrompt("");
       return;
     }
+
     const save = async () => {
       setIsSaving(true);
       try {
@@ -191,6 +188,7 @@ export default function AIChat() {
           prompt: lastSentPrompt,
           response: aiResponse,
         });
+
         if (error) throw error;
         await refetch?.();
       } catch (e) {
@@ -202,6 +200,7 @@ export default function AIChat() {
         setPrompt("");
       }
     };
+
     save();
   }, [lastSentPrompt, aiResponse, aiLoading, user, refetch]);
 
@@ -217,7 +216,7 @@ export default function AIChat() {
   };
 
   // -----------------------------------------------------------------
-  // 6. Send to Gemini
+  // 6. Send to AI
   // -----------------------------------------------------------------
   const handleGenerate = async () => {
     if (!prompt.trim() || aiLoading || dataLoading) return;
@@ -227,20 +226,23 @@ export default function AIChat() {
   };
 
   // -----------------------------------------------------------------
-  // 7. Scroll tracking – WhatsApp style
+  // 7. Scroll tracking
   // -----------------------------------------------------------------
   const handleScroll = (event: any) => {
     scrollY.current = event.nativeEvent.contentOffset.y;
     updateScrollButton();
   };
+
   const handleContentSizeChange = (w: number, h: number) => {
     contentHeight.current = h;
     updateScrollButton();
   };
+
   const handleLayout = (event: any) => {
     scrollViewHeight.current = event.nativeEvent.layout.height;
     updateScrollButton();
   };
+
   const updateScrollButton = () => {
     const scrollOffset = scrollY.current;
     const scrollHeight = contentHeight.current;
@@ -251,6 +253,7 @@ export default function AIChat() {
       distanceFromBottom > threshold && scrollHeight > viewHeight
     );
   };
+
   const scrollToBottom = () => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
     setShowScrollButton(false);
@@ -358,29 +361,20 @@ export default function AIChat() {
               <Timestamp date={msg.created_at} />
             </View>
           </View>
+
           {/* AI */}
           <View className="flex-row items-start mb-1">
             <View className="w-10 h-10 rounded-full bg-primary/20 mr-3 border border-border items-center justify-center">
-            <Icon name={'pulse'} size={24}  />
+              <Icon name="pulse" size={24} />
             </View>
             <View className="flex-1 max-w-[85%]">
               <View className="bg-muted rounded-3xl rounded-tl-md px-5 py-4 border border-border">
                 <Markdown
                   style={{
-                    body: {
-                      fontSize: 15,
-                      lineHeight: 22,
-                    },
-                    paragraph: {
-                      marginTop: 0,
-                      marginBottom: 8,
-                    },
-                    strong: {
-                      fontWeight: "700",
-                    },
-                    em: {
-                      fontStyle: "italic",
-                    },
+                    body: { fontSize: 15, lineHeight: 22 },
+                    paragraph: { marginTop: 0, marginBottom: 8 },
+                    strong: { fontWeight: "700" },
+                    em: { fontStyle: "italic" },
                     heading1: {
                       fontSize: 22,
                       fontWeight: "700",
@@ -405,30 +399,18 @@ export default function AIChat() {
                       marginTop: 10,
                       marginBottom: 4,
                     },
-                    bullet_list: {
-                      marginVertical: 4,
-                    },
-                    ordered_list: {
-                      marginVertical: 4,
-                    },
-                    list_item: {
-                      flexDirection: "row",
-                      marginBottom: 4,
-                    },
-                    bullet_list_icon: {
-                      marginRight: 8,
-                      marginTop: 2,
-                    },
-                    ordered_list_icon: {
-                      marginRight: 8,
-                      marginTop: 2,
-                    },
+                    bullet_list: { marginVertical: 4 },
+                    ordered_list: { marginVertical: 4 },
+                    list_item: { flexDirection: "row", marginBottom: 4 },
+                    bullet_list_icon: { marginRight: 8, marginTop: 2 },
+                    ordered_list_icon: { marginRight: 8, marginTop: 2 },
                     code_inline: {
                       paddingHorizontal: 6,
                       paddingVertical: 2,
                       borderRadius: 4,
                       fontSize: 14,
                       fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                      backgroundColor: "#f3f4f6",
                     },
                     code_block: {
                       padding: 12,
@@ -436,6 +418,7 @@ export default function AIChat() {
                       marginVertical: 8,
                       fontSize: 13,
                       fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                      backgroundColor: "#f3f4f6",
                     },
                     fence: {
                       padding: 12,
@@ -443,16 +426,20 @@ export default function AIChat() {
                       marginVertical: 8,
                       fontSize: 13,
                       fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                      backgroundColor: "#f3f4f6",
                     },
                     blockquote: {
                       borderLeftWidth: 4,
                       paddingLeft: 12,
                       paddingVertical: 8,
                       marginVertical: 8,
+                      borderLeftColor: "#e5e7eb",
+                      backgroundColor: "#f9fafb",
                     },
                     hr: {
                       height: 1,
                       marginVertical: 16,
+                      backgroundColor: "#e5e7eb",
                     },
                   }}
                 >
@@ -497,15 +484,14 @@ export default function AIChat() {
             </View>
           </View>
           <View className="flex-row items-start mb-4">
-            <View className="w-10 h-10 rounded-full bg-primary/20 mr-3 border border-border items-center justify-center">
-            </View>
+            <View className="w-10 h-10 rounded-full bg-primary/20 mr-3 border border-border items-center justify-center" />
             <AILoadingMessage />
           </View>
         </>
       );
     }
 
-    // Saving
+    // Saving indicator
     if ("__type" in item && item.__type === "saving") {
       return <AILoadingMessage />;
     }
@@ -522,7 +508,6 @@ export default function AIChat() {
     item: { id: number; prompt: string; created_at: string; response: string };
   }) => (
     <TouchableOpacity
-      key={item.id}
       className="bg-muted p-3 rounded-xl mb-2 border border-border mx-3"
       onPress={() => {
         setPrompt(item.prompt);
@@ -590,23 +575,38 @@ export default function AIChat() {
 
         <View className="flex-1">
           {/* Header */}
-          <View className="px-6 pt-12 pb-6 bg-primary">
+          <View className="px-6 pt-14 pb-6 bg-primary">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
+                {/* Menu Button */}
                 <TouchableOpacity
                   onPress={toggleSidebar}
-                  className="mr-4 w-10 h-10 rounded-full bg-muted items-center justify-center border border-border"
+                  className="w-11 h-11 rounded-2xl bg-white/10 backdrop-blur-xl items-center justify-center border border-white/20 shadow-lg mr-4"
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 6,
+                    elevation: 5,
+                  }}
                 >
-                  <Icon name="menu" size={24} className="text-foreground" />
+                  <Icon name="menu" size={22} className="text-white" />
                 </TouchableOpacity>
+
+                {/* Title & Subtitle */}
                 <View className="flex-1">
-                  <Text className="text-3xl font-bold text-foreground tracking-tight">
+                  <Text className="text-3xl font-extrabold text-white tracking-tight">
                     AI Assistant
                   </Text>
-                  <Text className="text-white mt-1 text-xs">
-                    {profile ? `Hey ${profile.first_name}!` : "AI Magic"}
+                  <Text className="text-white/80 mt-0.5 text-sm font-medium">
+                    {profile ? `Hey ${profile.first_name} ` : "AI Magic "}
                   </Text>
                 </View>
+              </View>
+
+              {/* Optional: Add a status indicator or avatar */}
+              <View className="w-9 h-9 rounded-full bg-white/20 items-center justify-center">
+              <Icon name="robot" size={20} className="text-white" />
               </View>
             </View>
           </View>
@@ -617,10 +617,10 @@ export default function AIChat() {
               ref={scrollViewRef}
               data={flashData}
               renderItem={renderFlashItem}
-              keyExtractor={(item, idx) =>
+              keyExtractor={(item, index) =>
                 "id" in item
                   ? item.id.toString()
-                  : `${"__type" in item ? item.__type : "unknown"}-${idx}`
+                  : `${"__type" in item ? item.__type : "unknown"}-${index}`
               }
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{

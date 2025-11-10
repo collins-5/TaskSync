@@ -64,11 +64,11 @@ const AppContent = () => {
     return <LoadingAnimation />;
   }
 
-  if (isOffline) {
-    return <NetworkError 
-    onRetry={() => NetInfo.refresh()} 
-    />;
-  }
+  // if (isOffline) {
+  //   return <NetworkError 
+  //   onRetry={() => NetInfo.refresh()} 
+  //   />;
+  // }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

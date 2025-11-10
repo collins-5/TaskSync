@@ -11,7 +11,7 @@ type AIAction =
       intent: "create_task";
       title: string;
       status: "Todo" | "InProgress" | "Done";
-      team_id: string;
+      team_id: string; // Can be ID or name
       description?: string;
       color?: string;
     }
@@ -28,7 +28,7 @@ export const useAIAssistant = () => {
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { profile, teams, tasks, user } = useSupabaseData();
+  const { profile, teams, tasks, user, refetch } = useSupabaseData();
 
   const generate = async (conversation: any[] = []) => {
     if (!prompt.trim()) return;
@@ -99,7 +99,7 @@ export const useAIAssistant = () => {
   };
 
   // -----------------------------------------------------------------
-  // EXECUTE ACTION – 100% MATCHES TaskCreation.tsx
+  // EXECUTE ACTION – MAP TEAM NAME → TEAM ID + REFETCH
   // -----------------------------------------------------------------
   const executeAction = async (action: AIAction) => {
     if (!user?.id) throw new Error("User not authenticated");
@@ -130,6 +130,8 @@ export const useAIAssistant = () => {
         });
 
         if (error) throw error;
+
+        await refetch?.();
       }
 
       // === CREATE TASK ===
@@ -139,13 +141,24 @@ export const useAIAssistant = () => {
           throw new Error("Missing title, status, or team_id");
         }
 
-        // Validate team exists
-        const teamExists = teams.some((t) => t.id === task.team_id);
-        if (!teamExists) {
-          throw new Error(`Team not found: ${task.team_id}`);
+        let teamId = task.team_id;
+
+        // MAP TEAM NAME → TEAM ID
+        const teamByName = teams.find(
+          (t) => t.name.toLowerCase() === task.team_id.toLowerCase()
+        );
+        if (teamByName) {
+          teamId = teamByName.id;
         }
 
-        // Validate status
+        // VALIDATE FINAL teamId EXISTS
+        const teamExists = teams.some((t) => t.id === teamId);
+        if (!teamExists) {
+          throw new Error(
+            `Team not found: ${task.team_id} (looked for name or ID)`
+          );
+        }
+
         const validStatuses: ("Todo" | "InProgress" | "Done")[] = [
           "Todo",
           "InProgress",
@@ -155,15 +168,13 @@ export const useAIAssistant = () => {
           throw new Error(`Invalid status: ${task.status}`);
         }
 
-        // Generate task ID like TaskCreation.tsx
         const taskId = `task-${user.id}-${Date.now()}`;
 
         console.log("AI inserting task:", {
           id: taskId,
           title: task.title,
-          team_id: task.team_id,
+          team_id: teamId,
           status: task.status,
-          description: task.description,
         });
 
         const { error } = await supabase.from("tasks").insert({
@@ -174,11 +185,13 @@ export const useAIAssistant = () => {
           first_name: user.user_metadata?.first_name ?? "User",
           last_name: user.user_metadata?.last_name ?? "",
           color: task.color || "#6366f1",
-          team_id: task.team_id,
+          team_id: teamId,
           user_id: user.id,
         });
 
         if (error) throw error;
+
+        await refetch?.();
       }
     } catch (err: any) {
       console.error("Action execution error:", err);
