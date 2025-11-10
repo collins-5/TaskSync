@@ -110,6 +110,7 @@ export type IconNames = Extract<
   | 'attachment'
   | 'send'
   | 'menu'
+  | 'star-outline'
   
 >;
 

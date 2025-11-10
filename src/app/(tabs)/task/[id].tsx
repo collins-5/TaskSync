@@ -1,7 +1,6 @@
 import { View, Text, ActivityIndicator, TouchableOpacity } from "react-native";
 import { useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-
 import {
   Card,
   CardHeader,
@@ -16,6 +15,7 @@ import { DropdownMenu } from "~/components/ui/drop-down-menu";
 import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
 import { useSupabaseData } from "~/hooks/useSupabaseData";
 import supabase from "~/lib/utils/supabase";
+import { Skeleton } from "~/components/ui/skeleton"; // <-- ADD THIS
 
 export default function TaskDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -52,14 +52,76 @@ export default function TaskDetails() {
     }
   };
 
+  /* ------------------------------------------------------------------ */
+  /*  SKELETON LOADING STATE                                            */
+  /* ------------------------------------------------------------------ */
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <ActivityIndicator size="large" color="#6366f1" />
+      <View className="flex-1 bg-background">
+        <HeaderSafeAreaView />
+
+        {/* Header */}
+        <View className="px-5 pt-4 pb-3 bg-primary">
+          <Skeleton className="h-9 w-64 mb-2" />
+          <Skeleton className="h-5 w-32" />
+        </View>
+
+        <View className="flex-1 px-4 pt-4">
+          <Card className="bg-card rounded-2xl overflow-hidden">
+            {/* Top color bar */}
+            <View className="h-2">
+              <Skeleton className="h-full w-full" />
+            </View>
+
+            <CardHeader className="pb-2">
+              <View className="flex-row items-center space-x-3">
+                <Skeleton className="w-10 h-10 rounded-full" />
+                <View className="flex-1">
+                  <Skeleton className="h-6 w-56 mb-2" />
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                </View>
+              </View>
+            </CardHeader>
+
+            <Separator className="mx-4 bg-muted/50" />
+
+            <CardContent className="pt-4 space-y-6">
+              {/* Description */}
+              <View>
+                <Skeleton className="h-5 w-24 mb-2" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-11/12 mt-1" />
+                <Skeleton className="h-4 w-10/12 mt-1" />
+              </View>
+
+              {/* Team */}
+              <View>
+                <Skeleton className="h-5 w-16 mb-2" />
+                <Skeleton className="h-5 w-32 rounded underline" />
+              </View>
+
+              {/* Status */}
+              <View>
+                <Skeleton className="h-5 w-20 mb-2" />
+                <Skeleton className="h-10 w-full rounded-lg border border-input" />
+              </View>
+            </CardContent>
+
+            <Separator className="mx-4 bg-muted/50" />
+
+            <CardFooter className="flex-row justify-between pt-4 pb-5 px-4 space-x-3">
+              <Skeleton className="h-10 flex-1 rounded-md" />
+              <Skeleton className="h-10 flex-1 rounded-md" />
+            </CardFooter>
+          </Card>
+        </View>
       </View>
     );
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  ERROR STATE                                                       */
+  /* ------------------------------------------------------------------ */
   if (error) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
@@ -68,6 +130,9 @@ export default function TaskDetails() {
     );
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  REAL CONTENT                                                      */
+  /* ------------------------------------------------------------------ */
   return (
     <>
       <HeaderSafeAreaView />
@@ -85,7 +150,7 @@ export default function TaskDetails() {
             <CardHeader className="pb-2">
               <View className="flex-row items-center space-x-3">
                 <Avatar
-                 resourceURL=""
+                  resourceURL=""
                   className="w-10 h-10 border-2 border-background"
                   first_name={task.first_name}
                   last_name={task.last_name}

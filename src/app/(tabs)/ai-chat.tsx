@@ -22,6 +22,8 @@ import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper
 import { FlashList, ListRenderItem } from "@shopify/flash-list";
 import type { FlashList as FlashListType } from "@shopify/flash-list";
 import AILoadingMessage from "~/components/core/ai-loading";
+import { MessageSkeleton } from "~/components/ai/messsage-skeleton-loading";
+import SkeletonList from "~/components/core/SkeletonList";
 
 const { width, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -58,21 +60,7 @@ const formatTimestamp = (dateString: string): string => {
 // ---------------------------------------------------------------
 // SKELETON
 // ---------------------------------------------------------------
-const MessageSkeleton = ({ isUser }: { isUser: boolean }) => (
-  <View className={`flex-row mb-4 ${isUser ? "justify-end" : "justify-start"}`}>
-    {!isUser && (
-      <View className="w-10 h-10 rounded-full bg-primary/20 mr-3 border border-border" />
-    )}
-    <View
-      className={`max-w-[75%] rounded-3xl px-5 py-3 ${
-        isUser ? "bg-primary/30 rounded-tr-none" : "bg-muted/50 rounded-tl-none"
-      } border border-border/50`}
-    >
-      <View className="h-4 bg-foreground/20 rounded-full w-32 mb-2" />
-      <View className="h-4 bg-foreground/20 rounded-full w-24" />
-    </View>
-  </View>
-);
+
 
 // ---------------------------------------------------------------
 // TYPES
@@ -275,10 +263,15 @@ export default function AIChat() {
     // Skeleton
     if ("__type" in item && item.__type === "skeleton") {
       return (
-        <>
-          <MessageSkeleton isUser={false} />
-          <MessageSkeleton isUser={true} />
-        </>
+        <SkeletonList
+          skeletonComponent={() => (
+            <>
+              <MessageSkeleton isUser={false} />
+              <MessageSkeleton isUser={true} />
+            </>
+          )}
+          count={4}
+        />
       );
     }
 

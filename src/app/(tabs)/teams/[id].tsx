@@ -19,11 +19,14 @@ import { Button } from "~/components/ui/button";
 import { Avatar } from "~/components/ui/avatar";
 import { Separator } from "~/components/ui/separator";
 import { useSupabaseData } from "~/hooks/useSupabaseData";
+import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
+import { Skeleton } from "~/components/ui/skeleton"; // <-- your skeleton
 
 export default function TeamDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { tasks, teams, loading, error } = useSupabaseData();
+
   const [refreshing, setRefreshing] = useState(false);
 
   const team = teams.find((t) => t.id === id) || {
@@ -41,15 +44,90 @@ export default function TeamDetails() {
     setTimeout(() => setRefreshing(false), 1200);
   }, []);
 
+  /* ------------------------------------------------------------------ */
+  /*  SKELETON UI – shown only while `loading` is true                  */
+  /* ------------------------------------------------------------------ */
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text className="text-foreground mt-2">Loading team details...</Text>
+      <View className="flex-1 bg-background">
+        <HeaderSafeAreaView />
+        {/* Header */}
+        <View className="px-5 pt-4 pb-3 bg-primary">
+          <Skeleton className="h-9 w-56 mb-2" />
+          <Skeleton className="h-5 w-32" />
+        </View>
+
+        <View className="flex-1 px-4 pt-4">
+          <Card className="bg-card rounded-2xl overflow-hidden">
+            {/* Top colour bar */}
+            <View className="h-2">
+              <Skeleton className="h-full w-full" />
+            </View>
+
+            <CardHeader className="pb-2">
+              <View className="flex-row items-center space-x-3">
+                <Skeleton className="w-10 h-10 rounded-full" />
+                <View className="flex-1">
+                  <Skeleton className="h-6 w-48 mb-1" />
+                  <Skeleton className="h-4 w-24" />
+                </View>
+              </View>
+            </CardHeader>
+
+            <Separator className="mx-4 bg-muted/50" />
+
+            <CardContent className="pt-4 space-y-6">
+              {/* Members block */}
+              <View>
+                <Skeleton className="h-5 w-20 mb-2" />
+                <Skeleton className="h-4 w-32" />
+              </View>
+
+              {/* Tasks block */}
+              <View>
+                <Skeleton className="h-5 w-28 mb-3" />
+                {/* 3 fake task cards */}
+                {[...Array(3)].map((_, i) => (
+                  <View key={i} className="mb-4">
+                    <View className="h-1">
+                      <Skeleton className="h-full w-full" />
+                    </View>
+                    <CardHeader className="pb-2">
+                      <View className="flex-row items-center space-x-3">
+                        <Skeleton className="w-8 h-8 rounded-full" />
+                        <View className="flex-1">
+                          <Skeleton className="h-5 w-64 mb-1" />
+                          <Skeleton className="h-5 w-20 rounded-full" />
+                        </View>
+                      </View>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-11/12 mt-1" />
+                    </CardContent>
+                    <CardFooter className="pt-2 pb-4">
+                      <Skeleton className="h-9 flex-1 rounded-md" />
+                    </CardFooter>
+                  </View>
+                ))}
+              </View>
+            </CardContent>
+
+            <Separator className="mx-4 bg-muted/50" />
+
+            <CardFooter className="flex-row justify-between pt-4 pb-5 px-4 space-x-3">
+              <Skeleton className="h-10 flex-1 rounded-md" />
+              <Skeleton className="h-10 flex-1 rounded-md" />
+            </CardFooter>
+          </Card>
+        </View>
       </View>
     );
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  ERROR STATE                                                       */
+  /* ------------------------------------------------------------------ */
   if (error) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
@@ -58,6 +136,9 @@ export default function TeamDetails() {
     );
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  REAL CONTENT (same as your original component)                    */
+  /* ------------------------------------------------------------------ */
   const renderTask = ({ item }: { item: (typeof tasks)[0] }) => (
     <Card
       className="mb-4 overflow-hidden bg-card rounded-xl"
@@ -73,7 +154,7 @@ export default function TeamDetails() {
       <CardHeader className="pb-2">
         <View className="flex-row items-center space-x-3">
           <Avatar
-          resourceURL=""
+            resourceURL=""
             className="w-8 h-8 border-2 border-background"
             first_name={item.first_name}
             last_name={item.last_name}
@@ -115,19 +196,21 @@ export default function TeamDetails() {
 
   return (
     <View className="flex-1 bg-background">
+      <HeaderSafeAreaView />
       <View className="px-5 pt-4 pb-3 bg-primary">
         <Text className="text-3xl font-bold text-white tracking-tight">
           {team.name}
         </Text>
         <Text className="text-primary-100 mt-1">Team Details</Text>
       </View>
+
       <View className="flex-1 px-4 pt-4">
         <Card className="bg-card rounded-2xl shadow-lg overflow-hidden">
           <View className="h-2" style={{ backgroundColor: team.color }} />
           <CardHeader className="pb-2">
             <View className="flex-row items-center space-x-3">
               <Avatar
-               resourceURL=""
+                resourceURL=""
                 className="w-10 h-10 border-2 border-background"
                 first_name={team.initials[0]}
                 last_name={team.initials[1]}
@@ -141,7 +224,9 @@ export default function TeamDetails() {
               </View>
             </View>
           </CardHeader>
+
           <Separator className="mx-4 bg-muted/50" />
+
           <CardContent className="pt-4 space-y-4">
             <View>
               <Text className="text-sm font-semibold text-foreground">
@@ -151,6 +236,7 @@ export default function TeamDetails() {
                 {team.members} team members
               </Text>
             </View>
+
             <View>
               <Text className="text-sm font-semibold text-foreground mb-2">
                 Team Tasks
@@ -161,6 +247,12 @@ export default function TeamDetails() {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={{ paddingBottom: 16 }}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                  />
+                }
                 ListEmptyComponent={
                   <Text className="text-sm text-muted-foreground">
                     No tasks assigned to this team yet.
@@ -169,7 +261,9 @@ export default function TeamDetails() {
               />
             </View>
           </CardContent>
+
           <Separator className="mx-4 bg-muted/50" />
+
           <CardFooter className="flex-row justify-between pt-4 pb-5 px-4 space-x-3">
             <Button
               text="Back"

@@ -29,7 +29,7 @@ import supabase from "~/lib/utils/supabase";
 
 export default function TeamCreation() {
   const router = useRouter();
-  const { user } = useSessionInit(); 
+  const { user } = useSessionInit();
 
   const [name, setName] = useState("");
   const [members, setMembers] = useState("");
@@ -86,6 +86,8 @@ export default function TeamCreation() {
       >
         <View className="flex-1 bg-background">
           {/* ---------- Header ---------- */}
+          <HeaderSafeAreaView />
+
           <View className="flex-row items-center pt-4 pb-3 bg-primary px-4">
             <Button
               variant="ghost"
@@ -98,10 +100,10 @@ export default function TeamCreation() {
               }}
             />
             <View className="flex-1 ml-3">
-              <Text className="text-3xl font-bold text-white tracking-tight">
+              <Text className="text-3xl font-bold text-primary-foreground tracking-tight">
                 New Team
               </Text>
-              <Text className="text-primary-100 mt-1">
+              <Text className="text-primary-foreground mt-1">
                 Create a team to collaborate on projects
               </Text>
             </View>
@@ -124,7 +126,7 @@ export default function TeamCreation() {
                     last_name="S"
                     alt="Team"
                   />
-                  <CardTitle className="text-lg">Team Details</CardTitle>
+                  <CardTitle className="text-lg text-primary">Team Details</CardTitle>
                 </View>
               </CardHeader>
 

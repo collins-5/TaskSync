@@ -30,6 +30,15 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
+          name="news"
+          options={{
+            tabBarLabel: "news",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="newspaper" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="teams"
           options={{
             tabBarLabel: "Teams",
@@ -48,15 +57,6 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="news"
-          options={{
-            tabBarLabel: "news",
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="menu" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
           name="ai-chat"
           options={{
             tabBarLabel: "Chat",
@@ -65,7 +65,6 @@ export default function TabsLayout() {
             ),
           }}
         />{" "}
-        // Added AI Chat screen
       </Tabs>
     </>
   );

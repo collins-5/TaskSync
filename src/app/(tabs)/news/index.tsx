@@ -1,94 +1,5 @@
-// types.ts - Type Definitions
-export interface NewsSource {
-  id: string | null;
-  name: string;
-}
-
-export interface NewsArticle {
-  source: NewsSource;
-  author: string | null;
-  title: string;
-  description: string | null;
-  url: string;
-  urlToImage: string | null;
-  publishedAt: string;
-  content: string | null;
-}
-
-export interface NewsResponse {
-  status: string;
-  totalResults: number;
-  articles: NewsArticle[];
-}
-
-export type NewsCategory =
-  | "general"
-  | "business"
-  | "technology"
-  | "sports"
-  | "entertainment"
-  | "health";
-
-// NewsService.ts - API Service
-const API_KEY = "f66b46eb655241d18cadb4e2f50070fd";
-const BASE_URL = "https://newsapi.org/v2";
-
-export class NewsService {
-  static async getTopHeadlines(
-    country: string = "us",
-    category?: NewsCategory
-  ): Promise<NewsArticle[]> {
-    try {
-      let url = `${BASE_URL}/top-headlines?country=${country}&apiKey=${API_KEY}`;
-      if (category) {
-        url += `&category=${category}`;
-      }
-
-      const response = await fetch(url);
-      const data: NewsResponse = await response.json();
-
-      if (data.status === "ok") {
-        return data.articles;
-      } else {
-        throw new Error("Failed to fetch news");
-      }
-    } catch (error) {
-      console.error("Error fetching top headlines:", error);
-      throw error;
-    }
-  }
-
-  static async searchNews(
-    query: string,
-    sortBy: "relevancy" | "popularity" | "publishedAt" = "publishedAt"
-  ): Promise<NewsArticle[]> {
-    try {
-      const url = `${BASE_URL}/everything?q=${encodeURIComponent(query)}&sortBy=${sortBy}&apiKey=${API_KEY}`;
-
-      const response = await fetch(url);
-      const data: NewsResponse = await response.json();
-
-      if (data.status === "ok") {
-        return data.articles;
-      } else {
-        throw new Error("Failed to search news");
-      }
-    } catch (error) {
-      console.error("Error searching news:", error);
-      throw error;
-    }
-  }
-
-  static async getNewsByCategory(
-    category: NewsCategory,
-    country: string = "us"
-  ): Promise<NewsArticle[]> {
-    return NewsService.getTopHeadlines(country, category);
-  }
-}
-
-// NewsScreen.tsx - Example Screen Component
-import React, { useState, useEffect, JSX } from "react";
+// src/screens/NewsScreen.tsx
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -98,9 +9,25 @@ import {
   ActivityIndicator,
   RefreshControl,
   Linking,
-  ListRenderItem,
   TextInput,
+  ListRenderItem,
 } from "react-native";
+import { NewsArticle, NewsCategory } from "@/types/news";
+import { NewsService } from "~/hooks/newsService";
+import { capitalize, formatDate } from "~/lib/utils/formatters";
+import Icon from "~/components/ui/icon";
+import { Input } from "~/components/ui/input";
+import SkeletonList from "~/components/core/SkeletonList";
+import { NewsItemSkeleton } from "~/components/news/NewsItemSkeleton";
+
+const categories: NewsCategory[] = [
+  "general",
+  "business",
+  "technology",
+  "sports",
+  "entertainment",
+  "health",
+];
 
 const NewsScreen: React.FC = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
@@ -109,15 +36,6 @@ const NewsScreen: React.FC = () => {
   const [category, setCategory] = useState<NewsCategory>("general");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearching, setIsSearching] = useState<boolean>(false);
-
-  const categories: NewsCategory[] = [
-    "general",
-    "business",
-    "technology",
-    "sports",
-    "entertainment",
-    "health",
-  ];
 
   useEffect(() => {
     if (!isSearching) {
@@ -173,9 +91,7 @@ const NewsScreen: React.FC = () => {
   };
 
   const openArticle = (url: string): void => {
-    if (url) {
-      Linking.openURL(url);
-    }
+    if (url) Linking.openURL(url);
   };
 
   const renderArticle: ListRenderItem<NewsArticle> = ({ item }) => (
@@ -211,18 +127,18 @@ const NewsScreen: React.FC = () => {
             {item.source.name}
           </Text>
           <Text className="text-xs text-gray-400">
-            {new Date(item.publishedAt).toLocaleDateString()}
+            {formatDate(item.publishedAt)}
           </Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 
-  const renderCategoryButton = (cat: NewsCategory): JSX.Element => (
+  const renderCategoryButton = (cat: NewsCategory) => (
     <TouchableOpacity
       key={cat}
       className={`px-4 py-2 mx-1 rounded-full ${
-        category === cat ? "bg-blue-600" : "bg-gray-100"
+        category === cat ? "bg-primary" : "bg-gray-100"
       }`}
       onPress={() => setCategory(cat)}
       activeOpacity={0.7}
@@ -232,44 +148,38 @@ const NewsScreen: React.FC = () => {
           category === cat ? "text-white" : "text-gray-600"
         }`}
       >
-        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+        {capitalize(cat)}
       </Text>
     </TouchableOpacity>
   );
 
-  if (loading && !refreshing) {
-    return (
-      <View className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
-    );
-  }
-
   return (
     <View className="flex-1 bg-gray-50">
-      <View className="bg-white px-4 pt-12 pb-4 border-b border-gray-200">
-        <Text className="text-3xl font-bold text-gray-900 mb-3">News</Text>
-
-        {/* Search Input */}
-        <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
-          <Text className="text-gray-400 text-lg mr-2">🔍</Text>
-          <TextInput
-            className="flex-1 text-base text-gray-900"
-            placeholder="Search news..."
-            placeholderTextColor="#9ca3af"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearchSubmit}
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={clearSearch} className="ml-2">
-              <Text className="text-gray-400 text-lg">✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+      <View className="px-5 pt-4 pb-3 bg-primary">
+        <Text className="text-3xl font-bold text-white tracking-tight">
+          News Feed
+        </Text>
       </View>
-
+      <View className="p-2">
+        <Input
+          className="flex-1 w-full text-base text-gray-900"
+          placeholder="Search news..."
+          placeholderTextColor="#9ca3af"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={handleSearchSubmit}
+          returnKeyType="search"
+          iconComponent={<Icon name={"magnify"} size={24} />}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity
+            onPress={clearSearch}
+            className="z-50 absolute top-5 right-4"
+          >
+            <Icon name="close-circle" size={20} className="text-gray-500" />
+          </TouchableOpacity>
+        )}
+      </View>
       {!isSearching && (
         <View className="bg-white border-b border-gray-200">
           <FlatList
@@ -286,28 +196,33 @@ const NewsScreen: React.FC = () => {
         </View>
       )}
 
-      <FlatList
-        data={articles}
-        renderItem={renderArticle}
-        keyExtractor={(item, index) => `${item.url}-${index}`}
-        contentContainerStyle={{ padding: 16 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#2563eb"]}
-            tintColor="#2563eb"
-          />
-        }
-        ListEmptyComponent={
-          <View className="flex-1 justify-center items-center py-20">
-            <Text className="text-gray-500 text-base">No articles found</Text>
-          </View>
-        }
-      />
+      {loading && !refreshing ? (
+        <View className="flex-1 px-4 pt-4">
+          <SkeletonList skeletonComponent={NewsItemSkeleton} count={6} />
+        </View>
+      ) : (
+        <FlatList
+          data={articles}
+          renderItem={renderArticle}
+          keyExtractor={(item, index) => `${item.url}-${index}`}
+          contentContainerStyle={{ padding: 16 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#2563eb"]}
+              tintColor="#2563eb"
+            />
+          }
+          ListEmptyComponent={
+            <View className="flex-1 justify-center items-center py-20">
+              <Text className="text-gray-500 text-base">No articles found</Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 };
 
 export default NewsScreen;
-

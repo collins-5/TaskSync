@@ -110,7 +110,7 @@ export default function TaskCreation() {
             <Button
               variant="ghost"
               onPress={() => router.back()}
-              className="rounded-full p-2"
+              className="rounded-full"
               iconProps={{
                 name: "arrow-left",
                 size: 24,
@@ -146,7 +146,7 @@ export default function TaskCreation() {
                     last_name="S"
                     alt="Task"
                   />
-                  <CardTitle className="text-lg">Task Details</CardTitle>
+                  <CardTitle className="text-lg text-primary ">Task Details</CardTitle>
                 </View>
               </CardHeader>
 

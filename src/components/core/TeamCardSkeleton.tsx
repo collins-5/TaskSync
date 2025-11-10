@@ -7,7 +7,7 @@ import { Skeleton } from "../ui/skeleton";
 function TeamCardSkeleton() {
   return (
     <Card
-      className="mb-4 overflow-hidden bg-card w-[350px] rounded-2xl"
+      className="mb-4 overflow-hidden bg-card w-full rounded-2xl"
       style={styles.cardShadow}
     >
       {/* Color Bar */}

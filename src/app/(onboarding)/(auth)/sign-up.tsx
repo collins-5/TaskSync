@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
@@ -72,34 +72,9 @@ export default function SignUp() {
       setError((err as Error).message || "Failed to sign up with Google");
     } finally {
       setLoading(false);
+      Alert.alert("Google Sign-In... Will be implemented soon");
     }
   };
-
-  if (loading) {
-    return (
-      <KeyboardAvoidingWrapper>
-        <View className="flex-1 bg-background justify-center px-6">
-          <Card className="bg-card rounded-2xl shadow-md">
-            <CardHeader className="items-center pb-4">
-              <Skeleton className="w-32 h-32 mb-6 rounded-full" />
-              <Skeleton className="h-8 w-1/2 mb-2 rounded" />
-              <Skeleton className="h-5 w-3/4 rounded" />
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Skeleton className="h-10 flex-1 rounded-lg" />
-              <Separator className="my-6 bg-muted/50" text="OR" />
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-10 w-full rounded-lg" />
-              <Skeleton className="h-4 w-3/4 mx-auto rounded" />
-            </CardContent>
-          </Card>
-        </View>
-      </KeyboardAvoidingWrapper>
-    );
-  }
 
   return (
     <KeyboardAvoidingWrapper>

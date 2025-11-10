@@ -41,6 +41,7 @@ export default function Teams() {
   return (
     <View className="flex-1 bg-background">
       <View className="px-5 pt-4 pb-3 bg-primary">
+        <HeaderSafeAreaView />
         <Text className="text-3xl font-bold text-white tracking-tight">
           Teams
         </Text>

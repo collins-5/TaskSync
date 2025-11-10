@@ -1,9 +1,8 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { useSessionInit } from "~/components/core/SessionInitializer";
-import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
 import { Separator } from "~/components/ui/separator";
 import {
@@ -17,7 +16,6 @@ import { SheetManager } from "react-native-actions-sheet";
 import { Image } from "expo-image";
 import { useState } from "react";
 import supabase from "~/lib/utils/supabase";
-import { Skeleton } from "~/components/ui/skeleton";
 
 export default function SignIn() {
   const { checkAuthState } = useSessionInit();
@@ -58,33 +56,9 @@ export default function SignIn() {
       setError((err as Error).message || "Failed to sign in with Google");
     } finally {
       setLoading(false);
+      Alert.alert("Google Sign-In... Will be implemented soon");
     }
   };
-
-  if (loading) {
-    return (
-      <KeyboardAvoidingWrapper>
-        <View className="flex-1 bg-background justify-center px-6">
-          <Card className="bg-card rounded-2xl shadow-md">
-            <CardHeader className="items-center pb-4">
-              <Skeleton className="h-8 w-1/2 mb-2 rounded" />
-              <Skeleton className="w-32 h-32 mb-10 rounded-full" />
-              <Skeleton className="h-5 w-3/4 rounded" />
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Skeleton className="h-10 flex-1 rounded-lg" />
-              <Separator className="my-6 bg-muted/50" text="OR" />
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-4 w-1/3 self-end rounded" />
-              <Skeleton className="h-10 w-full rounded-lg" />
-              <Skeleton className="h-4 w-3/4 mx-auto rounded" />
-            </CardContent>
-          </Card>
-        </View>
-      </KeyboardAvoidingWrapper>
-    );
-  }
 
   return (
     <KeyboardAvoidingWrapper>

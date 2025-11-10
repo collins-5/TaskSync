@@ -31,9 +31,11 @@ export default function Tasks() {
   return (
     <View className="flex-1 bg-background">
       <View className="px-5 pt-4 pb-3 bg-primary">
+        <HeaderSafeAreaView>
         <Text className="text-3xl font-bold text-white tracking-tight">
           Tasks
         </Text>
+        </HeaderSafeAreaView>
         <Text className="text-primary-100 mt-1">Your project tasks</Text>
       </View>
 
