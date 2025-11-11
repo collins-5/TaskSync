@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "scheme": ["tasksync", "exp+tasksync"],
+    "scheme": "tasksync",
     "splash": {
       "image": "./assets/splash-logo.jpg",
       "resizeMode": "contain",
@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.techcollins.TaskSync"
+      "bundleIdentifier": "com.techcollins.TaskSync",
+      "associatedDomains": [
+        "applinks:your-project-ref.supabase.co"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +27,36 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.techcollins.TaskSync"
+      "package": "com.techcollins.TaskSync",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "your-project-ref.supabase.co",
+              "pathPrefix": "/auth/v1/callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "tasksync"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
