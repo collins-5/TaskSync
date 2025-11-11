@@ -45,7 +45,7 @@ export function TaskCard({ task }: TaskCardProps) {
             alt={task.title}
           />
           <View className="flex-1">
-            <CardTitle className="text-lg">{task.title}</CardTitle>
+            <CardTitle className="text-lg text-primary">{task.title}</CardTitle>
             <Text
               className={`text-sm px-2 py-1 rounded-full mt-1 ${
                 task.status === "Todo"

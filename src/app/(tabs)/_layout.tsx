@@ -1,6 +1,6 @@
-import { Tabs } from "expo-router";
+import {  Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
+
 
 export default function TabsLayout() {
   return (
@@ -25,6 +25,18 @@ export default function TabsLayout() {
         />
         <Tabs.Screen
           name="profiles"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="account"
           options={{
             href: null,
           }}
@@ -64,7 +76,7 @@ export default function TabsLayout() {
               <Ionicons name="chatbubble" size={size} color={color} />
             ),
           }}
-        />{" "}
+        />
       </Tabs>
     </>
   );

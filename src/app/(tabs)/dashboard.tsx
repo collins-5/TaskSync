@@ -8,8 +8,8 @@ import TaskView from "~/components/Dashboard/recent-tasks";
 import TeamView from "~/components/Dashboard/teams-overview";
 import { useSupabaseData } from "~/hooks/useSupabaseData";
 import QuickActions from "~/components/Dashboard/quick-action";
-import ProfileDrawer from "~/components/drawer/ProfileDrawer";
 import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
+import ProfileDrawer from "~/components/drawer/drawer";
 
 const quickActions = [
   {
@@ -68,20 +68,19 @@ export default function Dashboard() {
   return (
     <View className="flex-1 bg-background">
       <HeaderSafeAreaView />
-      {/* <TouchableOpacity onPress={() => router.push("/profiles")}> */}
-      <TouchableOpacity onPress={() => setDrawerOpen(true)}>
+      <TouchableOpacity
+        onPress={() => setDrawerOpen(true)}
+      >
         {loading ? (
           <HeaderSkeleton />
         ) : (
-            <Header
-              title="Dashboard"
-              subtitle={
-                profile
-                  ? `Welcome back, ${profile.first_name}!`
-                  : "Welcome back!"
-              }
-              image={profile?.image}
-            />
+          <Header
+            title="Dashboard"
+            subtitle={
+              profile ? `Welcome back, ${profile.first_name}!` : "Welcome back!"
+            }
+            image={profile?.image}
+          />
         )}
       </TouchableOpacity>
 

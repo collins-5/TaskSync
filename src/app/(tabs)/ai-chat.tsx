@@ -24,6 +24,7 @@ import type { FlashList as FlashListType } from "@shopify/flash-list";
 import AILoadingMessage from "~/components/core/ai-loading";
 import { MessageSkeleton } from "~/components/ai/messsage-skeleton-loading";
 import SkeletonList from "~/components/core/SkeletonList";
+import GetInitials from "~/components/core/get-Initials";
 
 const { width, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -60,7 +61,6 @@ const formatTimestamp = (dateString: string): string => {
 // ---------------------------------------------------------------
 // SKELETON
 // ---------------------------------------------------------------
-
 
 // ---------------------------------------------------------------
 // TYPES
@@ -599,7 +599,7 @@ export default function AIChat() {
 
               {/* Optional: Add a status indicator or avatar */}
               <View className="w-9 h-9 rounded-full bg-white/20 items-center justify-center">
-              <Icon name="robot" size={20} className="text-white" />
+                <Icon name="robot" size={20} className="text-white" />
               </View>
             </View>
           </View>
@@ -734,7 +734,11 @@ export default function AIChat() {
               <View className="flex-row items-center justify-between mb-2">
                 <View className="flex-row items-center">
                   <View className="w-10 h-10 rounded-full bg-primary/20 mr-3 items-center justify-center">
-                    <Text className="text-2xl">History</Text>
+                    <GetInitials
+                      firstName={profile?.first_name}
+                      lastName={profile?.last_name}
+                      className="text-primary rounded-full text-4xl font-bold"
+                    />
                   </View>
                   <Text className="text-xl font-bold text-foreground">
                     History

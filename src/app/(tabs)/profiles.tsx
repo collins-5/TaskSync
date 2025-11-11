@@ -1,61 +1,47 @@
-import { View, Text, TouchableOpacity, Alert } from "react-native";
+// src/app/(tabs)/profiles.tsx
+import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
-import { useSessionInit } from "~/components/core/SessionInitializer";
+import { useSupabaseData } from "~/hooks/useSupabaseData";
 import supabase from "~/lib/utils/supabase";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
 import { Skeleton } from "~/components/ui/skeleton";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
+import Icon from "~/components/ui/icon";
+import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
+import ProfileSkeleton from "~/components/profile/profile-skeleton";
+import GetInitials from "~/components/core/get-Initials";
+import DrawerDashboardButton from "~/components/core/drawer-dashboard-button";
+import ProfileDrawer from "~/components/drawer/drawer";
 
 export default function Profiles() {
-  const { user, checkAuthState } = useSessionInit();
   const router = useRouter();
+  const { profile, loading, refetch } = useSupabaseData();
+
+  const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
   const [image, setImage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Fetch profile data
   useEffect(() => {
-    if (!user) return;
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from("users")
-          .select("first_name, last_name, image")
-          .eq("id", user.id)
-          .single();
-        if (
-          error &&
-          !error.message.includes("column users.image does not exist")
-        ) {
-          throw error;
-        }
-        setFirstName(data?.first_name || "");
-        setLastName(data?.last_name || "");
-        setImage(data?.image || null);
-        if (data?.image) console.log("Profile image URL:", data.image);
-      } catch (err) {
-        setError((err as Error).message || "Failed to load profile");
-        console.error("Profile fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
-  }, [user]);
+    if (profile && !isEditing) {
+      setFirstName(profile.first_name ?? "");
+      setLastName(profile.last_name ?? "");
+      setEmail(profile.email ?? "");
+      setImage(profile.image ?? null);
+    }
+  }, [profile, isEditing]);
 
-  // Handle image upload
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission denied", "Please allow access to photos.");
+      Alert.alert("Permission needed", "Allow photo access to set avatar.");
       return;
     }
 
@@ -63,162 +49,201 @@ export default function Profiles() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.5,
+      quality: 0.7,
     });
 
-    if (!result.canceled && result.assets[0].uri) {
-      setSaving(true);
-      try {
-        const file = result.assets[0];
-        const fileExt = file.uri.split(".").pop() || "jpg";
-        const fileName = `${user!.id}-${Date.now()}.${fileExt}`;
+    if (result.canceled) return;
 
-        // Upload file directly using uri
-        const { error: uploadError } = await supabase.storage
-          .from("profile-images")
-          .upload(
-            fileName,
-            {
-              uri: file.uri,
-              type: file.mimeType || `image/${fileExt}`,
-              name: fileName,
-            },
-            {
-              contentType: file.mimeType || `image/${fileExt}`,
-              upsert: true,
-            }
-          );
+    const file = result.assets[0];
+    const ext = file.uri.split(".").pop() ?? "jpg";
+    const fileName = `${profile!.id}/avatar.${ext}`;
 
-        if (uploadError) throw uploadError;
-
-        const { data: publicUrlData } = supabase.storage
-          .from("profile-images")
-          .getPublicUrl(fileName);
-
-        const imageUrl = publicUrlData.publicUrl;
-        console.log("Uploaded image URL:", imageUrl);
-        // Test URL accessibility
-        fetch(imageUrl)
-          .then((res) => console.log("Image URL fetch status:", res.status))
-          .catch((err) => console.error("Image URL fetch error:", err));
-        setImage(imageUrl);
-
-        // Update user table with image URL
-        const { error: updateError } = await supabase
-          .from("users")
-          .update({ image: imageUrl })
-          .eq("id", user!.id);
-
-        if (updateError) throw updateError;
-      } catch (err) {
-        setError((err as Error).message || "Failed to upload image");
-        console.error("Image upload error:", err);
-      } finally {
-        setSaving(false);
-      }
-    }
-  };
-
-  // Handle profile save
-  const handleSave = async () => {
     setSaving(true);
-    setError("");
     try {
-      const { error } = await supabase
+      const { error: upErr } = await supabase.storage
+        .from("profile-images")
+        .upload(
+          fileName,
+          {
+            uri: file.uri,
+            type: file.mimeType ?? `image/${ext}`,
+            name: fileName,
+          },
+          { upsert: true }
+        );
+
+      if (upErr) throw upErr;
+
+      const { data: urlData } = supabase.storage
+        .from("profile-images")
+        .getPublicUrl(fileName);
+
+      const imgUrl = urlData.publicUrl;
+      setImage(imgUrl);
+
+      await supabase
         .from("users")
-        .update({ first_name: firstName, last_name: lastName })
-        .eq("id", user!.id);
-      if (error) throw error;
-      await checkAuthState();
-      router.replace("/(tabs)/dashboard");
-    } catch (err) {
-      setError((err as Error).message || "Failed to save profile");
-      console.error("Profile save error:", err);
+        .update({ image: imgUrl })
+        .eq("id", profile!.id);
+
+      await refetch();
+    } catch (e: any) {
+      Alert.alert("Upload failed", e.message);
     } finally {
       setSaving(false);
     }
   };
 
-  console.log("Rendering Profiles:", {
-    firstName,
-    lastName,
-    image,
-    loading,
-    saving,
-    error,
-  });
+  const handleSave = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      Alert.alert("Required", "First and last name are required.");
+      return;
+    }
 
-  if (loading) {
-    return (
-      <View className="flex-1 bg-background justify-center px-6">
-        <Skeleton className="w-32 h-32 mb-6 rounded-full mx-auto" />
-        <Skeleton className="h-10 w-full rounded-lg mb-4" />
-        <Skeleton className="h-10 w-full rounded-lg mb-4" />
-        <Skeleton className="h-12 w-full rounded-lg" />
-      </View>
-    );
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          email,
+        })
+        .eq("id", profile!.id);
+
+      if (error) throw error;
+
+      await refetch();
+      setIsEditing(false);
+    } catch (e: any) {
+      Alert.alert("Save failed", e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading || !profile) {
+    return <ProfileSkeleton />;
   }
 
+  const fullName = `${firstName} ${lastName}`.trim() || "User";
+
   return (
-    <KeyboardAvoidingWrapper>
-      <View className="flex-1 bg-background justify-center px-6">
-        <View className="bg-card rounded-2xl shadow-md p-6">
-          <Text className="text-2xl font-bold text-foreground mb-4 text-center">
-            Your Profile
-          </Text>
-          <TouchableOpacity
-            onPress={pickImage}
-            disabled={saving}
-            className="items-center mb-6"
-          >
-            {image ? (
-              <Image
-                source={{
-                  uri: image,
-                }}
-                className="w-32 h-32 rounded-full"
-                contentFit="cover"
-              />
-            ) : (
-              <View className="w-32 h-32 rounded-full bg-muted flex items-center justify-center">
-                <Text className="text-foreground">Add Image</Text>
+    <>
+        <HeaderSafeAreaView />
+        <KeyboardAvoidingWrapper>
+          <ScrollView className="flex-1 bg-muted">
+            <View className="px-6 pt-10 pb-6">
+              {/* AVATAR */}
+              <View className="items-center mb-8 ">
+                {/*back button */}
+                <View className="absolute rounded-full left-1 ">
+                  <DrawerDashboardButton
+                    setDrawerOpen={setDrawerOpen}
+                    className="bg-primary"
+                  />
+                </View>
+                <TouchableOpacity onPress={pickImage} disabled={saving}>
+                  {!image ? (
+                    <Image
+                      source={{ uri: image }}
+                      className="w-28 h-28 rounded-full border-4 border-white shadow-lg"
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <View className="w-32 h-32 rounded-full bg-primary flex items-center justify-center shadow-lg">
+                      <GetInitials firstName={firstName} lastName={lastName} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                <Text className="text-xs font-bold text-foreground mt-4">
+                  {profile?.email}
+                </Text>
+
+                <Text className="text-2xl font-bold text-foreground mt-2">
+                  {fullName}
+                </Text>
+                <Text className="text-sm text-muted-foreground mt-1">
+                  Member since {profile?.created_at?.split("T")[0]}
+                </Text>
               </View>
-            )}
-          </TouchableOpacity>
-          <Input
-            value={firstName}
-            onChangeText={setFirstName}
-            placeholder="First Name"
-            className="mb-4"
-            autoCapitalize="words"
-          />
-          <Input
-            value={lastName}
-            onChangeText={setLastName}
-            placeholder="Last Name"
-            className="mb-4"
-            autoCapitalize="words"
-          />
-          {error && (
-            <Text className="text-red-500 text-center mb-4">{error}</Text>
-          )}
-          <Button
-            text="Save Profile"
-            variant="default"
-            size="lg"
-            onPress={handleSave}
-            disabled={saving || !firstName.trim()}
-            loading={saving}
-          />
-          <Button
-            text="Back"
-            variant="outline"
-            size="lg"
-            className="mt-4"
-            onPress={() => router.back()}
-          />
-        </View>
-      </View>
-    </KeyboardAvoidingWrapper>
+
+              {!isEditing ? (
+                <TouchableOpacity
+                  onPress={() => setIsEditing(true)}
+                  className="flex-row items-center w-1/3 self-end justify-center py-4 border border-teal-600 rounded-lg"
+                >
+                  <Icon
+                    name="account-edit"
+                    size={20}
+                    className="text-teal-600 mr-2"
+                  />
+                  <Text className="text-teal-600 font-medium">
+                    Edit Profile
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <View className="space-y-4">
+                {/* First Name */}
+                <Input
+                  label="First Name"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  placeholder="First name"
+                  editable={isEditing}
+                  className={isEditing ? "mb-0" : "bg-muted"}
+                />
+
+                {/* Last Name */}
+                <Input
+                  label="Last Name"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  placeholder="Last name"
+                  editable={isEditing}
+                  className={isEditing ? "mb-0" : "bg-muted"}
+                />
+
+                {/* Email */}
+                <Input
+                  label="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  keyboardType="email-address"
+                  editable={isEditing}
+                  className={isEditing ? "mb-0" : "bg-muted"}
+                />
+              </View>
+
+              <View className="mt-8">
+                {isEditing ? (
+                  <View className="flex-row justify-around">
+                    <Button
+                      text="Cancel"
+                      variant="outline"
+                      size="lg"
+                      onPress={() => setIsEditing(false)}
+                    />
+                    <Button
+                      text="Save Changes"
+                      size="lg"
+                      onPress={handleSave}
+                      disabled={saving}
+                      loading={saving}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingWrapper>
+        <ProfileDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+        />
+    </>
   );
 }
