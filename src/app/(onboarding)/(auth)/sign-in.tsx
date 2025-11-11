@@ -1,9 +1,9 @@
+// app/(auth)/sign-in.tsx
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { useSessionInit } from "~/components/core/SessionInitializer";
-import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
 import { Separator } from "~/components/ui/separator";
 import {
   Card,
@@ -14,8 +14,13 @@ import {
 } from "~/components/ui/card";
 import { SheetManager } from "react-native-actions-sheet";
 import { Image } from "expo-image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import supabase from "~/lib/utils/supabase";
+import {
+  setupOAuthDeepLinkHandler,
+  signInWithGoogle,
+} from "~/lib/utils/signin-with-google";
+import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper-auth";
 
 export default function SignIn() {
   const { checkAuthState } = useSessionInit();
@@ -23,7 +28,39 @@ export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Deep link + user insert
+  useEffect(() => {
+    const cleanup = setupOAuthDeepLinkHandler(
+      async () => {
+        setGoogleLoading(false);
+        await checkAuthState();
+        router.replace("/(tabs)/dashboard");
+      },
+      (err) => {
+        setGoogleLoading(false);
+        Alert.alert("Sign-In Error", err.message);
+      },
+      async (user) => {
+        // INSERT INTO `users`
+        const name =
+          user.user_metadata.full_name || user.email?.split("@")[0] || "";
+        const [first_name = "", ...last] = name.trim().split(" ");
+        const last_name = last.join(" ");
+
+        await supabase.from("users").upsert({
+          id: user.id,
+          email: user.email,
+          first_name,
+          last_name,
+          avatar_url: user.user_metadata.avatar_url,
+        });
+      }
+    );
+    return cleanup;
+  }, [checkAuthState, router]);
 
   const handleSignIn = async () => {
     setLoading(true);
@@ -35,6 +72,7 @@ export default function SignIn() {
       });
       if (error) throw error;
       await checkAuthState();
+      router.replace("/(tabs)/dashboard");
     } catch (err) {
       setError((err as Error).message || "Failed to sign in");
     } finally {
@@ -43,21 +81,10 @@ export default function SignIn() {
   };
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
+    setGoogleLoading(true);
     setError("");
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: "your-app-redirect-url://(tabs)/dashboard" },
-      });
-      if (error) throw error;
-      await checkAuthState();
-    } catch (err) {
-      setError((err as Error).message || "Failed to sign in with Google");
-    } finally {
-      setLoading(false);
-      Alert.alert("Google Sign-In... Will be implemented soon");
-    }
+    const ok = await signInWithGoogle();
+    if (!ok) setGoogleLoading(false);
   };
 
   return (
@@ -130,7 +157,7 @@ export default function SignIn() {
                 })
               }
               className="mb-6"
-              accessibilityLabel="Forgot Password action sheet"
+              disabled={loading || googleLoading}
             >
               <Text className="text-gray-500 text-sm text-right underline">
                 Forgot Password?
@@ -142,13 +169,15 @@ export default function SignIn() {
               size="lg"
               className="rounded-lg"
               onPress={handleSignIn}
-              disabled={loading || !email.trim() || !password.trim()}
+              disabled={
+                loading || googleLoading || !email.trim() || !password.trim()
+              }
               loading={loading}
             />
             <View className="flex-row justify-center mt-6">
               <Text className="text-gray-600">Don't have an account? </Text>
               <Link href="/(auth)/sign-up" asChild>
-                <TouchableOpacity>
+                <TouchableOpacity disabled={loading || googleLoading}>
                   <Text className="text-primary font-semibold">Sign Up</Text>
                 </TouchableOpacity>
               </Link>

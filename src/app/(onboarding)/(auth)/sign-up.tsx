@@ -3,8 +3,7 @@ import { Link, useRouter } from "expo-router";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { useSessionInit } from "~/components/core/SessionInitializer";
-import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
-import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
+import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper-auth";
 import { Separator } from "~/components/ui/separator";
 import {
   Card,
@@ -14,9 +13,12 @@ import {
   CardDescription,
 } from "~/components/ui/card";
 import { Image } from "expo-image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import supabase from "~/lib/utils/supabase";
-import { Skeleton } from "~/components/ui/skeleton";
+import {
+  setupOAuthDeepLinkHandler,
+  signInWithGoogle,
+} from "~/lib/utils/signin-with-google";
 
 export default function SignUp() {
   const { checkAuthState } = useSessionInit();
@@ -26,7 +28,36 @@ export default function SignUp() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const cleanup = setupOAuthDeepLinkHandler(
+      async () => {
+        setGoogleLoading(false);
+        await checkAuthState();
+        router.replace("/(tabs)/dashboard");
+      },
+      (err) => {
+        setGoogleLoading(false);
+        Alert.alert("Error", err.message);
+      },
+      async (user) => {
+        const name =
+          user.user_metadata.full_name || user.email?.split("@")[0] || "";
+        const [first_name = "", ...last] = name.trim().split(" ");
+        const last_name = last.join(" ");
+        await supabase.from("users").upsert({
+          id: user.id,
+          email: user.email,
+          first_name,
+          last_name,
+          avatar_url: user.user_metadata.avatar_url,
+        });
+      }
+    );
+    return cleanup;
+  }, [checkAuthState, router]);
 
   const handleSignUp = async () => {
     if (password !== confirmPassword) {
@@ -59,21 +90,9 @@ export default function SignUp() {
   };
 
   const handleGoogleSignUp = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: "your-app-redirect-url://(tabs)/dashboard" },
-      });
-      if (error) throw error;
-      await checkAuthState();
-    } catch (err) {
-      setError((err as Error).message || "Failed to sign up with Google");
-    } finally {
-      setLoading(false);
-      Alert.alert("Google Sign-In... Will be implemented soon");
-    }
+    setGoogleLoading(true);
+    const ok = await signInWithGoogle();
+    if (!ok) setGoogleLoading(false);
   };
 
   return (
@@ -97,76 +116,76 @@ export default function SignUp() {
           </CardHeader>
           <CardContent className="space-y-6">
             <View className="flex-row justify-center space-x-3">
-              <Button
+            <Button
                 text="Google"
-                variant="outline"
-                size="default"
+              variant="outline"
+              size="default"
                 className="flex-1 text-center rounded-lg border-gray-200"
                 onPress={handleGoogleSignUp}
                 disabled={loading}
-              />
+            />
             </View>
             <Separator className="my-6 bg-foreground" text="OR" />
             <View className="mb-4">
-              <Input
-                value={fullName}
-                onChangeText={setFullName}
+            <Input
+              value={fullName}
+              onChangeText={setFullName}
                 className="rounded-lg px-4 py-3 text-black"
-                placeholder="Full Name"
+              placeholder="Full Name"
                 placeholderTextColor="rgb(105, 105, 105)"
-                autoCapitalize="words"
+              autoCapitalize="words"
                 iconProps={{
                   name: "account-outline",
                   size: 20,
                   className: "text-muted-foreground",
                 }}
-              />
+            />
             </View>
             <View className="mb-4">
-              <Input
-                value={email}
-                onChangeText={setEmail}
+            <Input
+              value={email}
+              onChangeText={setEmail}
                 className="rounded-lg px-4 py-3 text-black"
                 placeholder="Email Address"
                 placeholderTextColor="rgb(105, 105, 105)"
-                keyboardType="email-address"
-                autoCapitalize="none"
+              keyboardType="email-address"
+              autoCapitalize="none"
                 iconProps={{
                   name: "email-outline",
                   size: 20,
                   className: "text-muted-foreground",
                 }}
-              />
+            />
             </View>
             <View className="mb-4">
-              <Input
-                value={password}
-                onChangeText={setPassword}
+            <Input
+              value={password}
+              onChangeText={setPassword}
                 className="rounded-lg px-4 py-3 text-black"
-                placeholder="Password"
+              placeholder="Password"
                 placeholderTextColor="rgb(105, 105, 105)"
-                secureTextEntry
+              secureTextEntry
                 iconProps={{
                   name: "lock-outline",
                   size: 20,
                   className: "text-muted-foreground",
                 }}
-              />
+            />
             </View>
             <View className="mb-6">
-              <Input
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
+            <Input
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
                 className="rounded-lg px-4 py-3 text-black"
-                placeholder="Confirm Password"
+              placeholder="Confirm Password"
                 placeholderTextColor="rgb(105, 105, 105)"
-                secureTextEntry
+              secureTextEntry
                 iconProps={{
                   name: "lock-outline",
                   size: 20,
                   className: "text-muted-foreground",
                 }}
-              />
+            />
             </View>
             {error && <Text className="text-red-500 text-center">{error}</Text>}
             <Button
